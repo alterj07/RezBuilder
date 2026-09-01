@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { extractContactInfo, extractResumeSections } from '../src/services/parser/sectionExtractor';
+import { extractTextFromRawPdfBytes, PasswordRequiredError } from '../src/services/parser/pdfParser';
 import { resumeStorage } from '../src/services/storage/resumeStorage';
 import { Resume } from '../src/types/resume';
 
@@ -83,6 +84,35 @@ Databases & Cloud: PostgreSQL, Redis, MongoDB, AWS, Docker, Kubernetes, CI/CD
     expect(sections.skills).toContain('docker');
     expect(sections.skills).toContain('kubernetes');
     expect(sections.skills).toContain('postgresql');
+  });
+});
+
+describe('PDF Stream Fallback & Password Handling', () => {
+  it('should extract text from raw PDF text objects (BT...ET)', () => {
+    const fakePdfContent = `
+      %PDF-1.4
+      1 0 obj << /Type /Catalog >> endobj
+      2 0 obj << /Length 100 >> stream
+      BT
+      /F1 12 Tf
+      (Senior Full Stack Developer) Tj
+      [(Proficient in React, Node.js, and PostgreSQL)] TJ
+      ET
+      endstream endobj
+    `;
+    const encoder = new TextEncoder();
+    const buffer = encoder.encode(fakePdfContent).buffer;
+
+    const extracted = extractTextFromRawPdfBytes(buffer);
+    expect(extracted).toContain('Senior Full Stack Developer');
+    expect(extracted).toContain('React');
+    expect(extracted).toContain('PostgreSQL');
+  });
+
+  it('PasswordRequiredError should identify protected PDFs', () => {
+    const err = new PasswordRequiredError('Protected file');
+    expect(err.isPasswordRequired).toBe(true);
+    expect(err.name).toBe('PasswordRequiredError');
   });
 });
 

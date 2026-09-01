@@ -12,9 +12,12 @@ import {
   Linkedin,
   Github,
   Award,
+  KeyRound,
+  ShieldAlert,
 } from 'lucide-react';
 import { Resume } from '../../types/resume';
 import { parseResumeFile } from '../../services/parser';
+import { PasswordRequiredError } from '../../services/parser/pdfParser';
 
 interface ResumesTabProps {
   resumes: Resume[];
@@ -40,17 +43,38 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
   const [expandedResumeId, setExpandedResumeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileProcess = async (file: File) => {
+  // Password-protected PDF states
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pdfPassword, setPdfPassword] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  const handleFileProcess = async (file: File, password?: string) => {
     setIsUploading(true);
     setUploadError(null);
     try {
-      const parsedResume = await parseResumeFile(file, tagInput);
+      const parsedResume = await parseResumeFile(file, tagInput, password);
       onSaveResume(parsedResume);
+      setShowPasswordModal(false);
+      setPendingFile(null);
+      setPdfPassword('');
     } catch (err: any) {
       console.error(err);
-      setUploadError(err.message || 'Failed to parse resume file.');
+      if (err instanceof PasswordRequiredError || err.isPasswordRequired || err.message?.toLowerCase().includes('password')) {
+        setPendingFile(file);
+        setShowPasswordModal(true);
+        setUploadError(null);
+      } else {
+        setUploadError(err.message || 'Failed to parse resume file.');
+      }
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pendingFile) {
+      handleFileProcess(pendingFile, pdfPassword);
     }
   };
 
@@ -132,6 +156,55 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Password Required Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-900 border border-amber-500/40 rounded-2xl w-full max-w-sm p-4 space-y-3 shadow-2xl">
+            <div className="flex items-center gap-2 text-amber-400">
+              <ShieldAlert className="w-5 h-5 shrink-0" />
+              <h3 className="text-sm font-semibold">Password Protected PDF</h3>
+            </div>
+            <p className="text-xs text-surface-300 leading-relaxed">
+              <strong>{pendingFile?.name}</strong> is encrypted with an open password. Enter the password to unlock and parse it locally:
+            </p>
+            <form onSubmit={handlePasswordSubmit} className="space-y-3">
+              <div className="relative">
+                <input
+                  type="password"
+                  placeholder="Enter PDF password..."
+                  required
+                  autoFocus
+                  value={pdfPassword}
+                  onChange={(e) => setPdfPassword(e.target.value)}
+                  className="w-full bg-surface-950 border border-surface-800 rounded-lg px-3 py-2 text-xs text-white placeholder-surface-600 outline-none focus:border-brand-500 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPendingFile(null);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs text-surface-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  className="px-4 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold shadow-md shadow-brand-500/20 flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>{isUploading ? 'Decrypting...' : 'Unlock & Parse'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Resumes List */}
       <div className="space-y-3 pt-2">

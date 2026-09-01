@@ -3,7 +3,11 @@ import { extractTextFromPdf } from './pdfParser';
 import { extractTextFromDocx } from './docxParser';
 import { extractResumeSections } from './sectionExtractor';
 
-export async function parseResumeFile(file: File, tag: string = 'General'): Promise<Resume> {
+export async function parseResumeFile(
+  file: File,
+  tag: string = 'General',
+  password?: string
+): Promise<Resume> {
   const fileName = file.name;
   const fileExt = fileName.split('.').pop()?.toLowerCase();
   const arrayBuffer = await file.arrayBuffer();
@@ -13,7 +17,7 @@ export async function parseResumeFile(file: File, tag: string = 'General'): Prom
 
   if (fileExt === 'pdf') {
     fileType = 'pdf';
-    rawText = await extractTextFromPdf(arrayBuffer);
+    rawText = await extractTextFromPdf(arrayBuffer, password);
   } else if (fileExt === 'docx') {
     fileType = 'docx';
     rawText = await extractTextFromDocx(arrayBuffer);
