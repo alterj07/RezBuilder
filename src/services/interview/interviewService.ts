@@ -1,6 +1,8 @@
 import { JobPosting } from '../../types/job';
 import { Resume } from '../../types/resume';
 import { InterviewPrepBriefing } from '../../types/interview';
+import { generateLocalInterviewPrep } from './localInterviewEngine';
+import { getStoredSettings } from '../ai/aiFactory';
 import { getActiveAIProvider } from '../ai/aiFactory';
 import { INTERVIEW_PREP_SYSTEM_PROMPT, buildInterviewPrepPrompt } from '../../prompts/interviewPrep';
 
@@ -8,29 +10,48 @@ const BRIEFINGS_KEY = 'rezbuilder_interview_briefings';
 
 export class InterviewService {
   /**
-   * Generates a complete interview preparation briefing for a job
+   * Generates an interview preparation briefing for a job.
+   * Uses 100% local deterministic engine by default, or LLM if key is configured.
    */
   async generateBriefing(job: JobPosting, resume?: Resume): Promise<InterviewPrepBriefing> {
-    const aiProvider = await getActiveAIProvider();
-    const prompt = buildInterviewPrepPrompt(job, resume);
+    const settings = await getStoredSettings();
+    const hasApiKey =
+      (settings.aiProvider === 'anthropic' && !!settings.anthropicApiKey) ||
+      (settings.aiProvider === 'openai' && !!settings.openaiApiKey) ||
+      (settings.aiProvider === 'gemini' && !!settings.geminiApiKey);
 
-    const payload = await aiProvider.generateStructuredJson<any>(prompt, {
-      systemPrompt: INTERVIEW_PREP_SYSTEM_PROMPT,
-      temperature: 0.3,
-    });
+    let briefing: InterviewPrepBriefing;
 
-    const briefing: InterviewPrepBriefing = {
-      id: 'prep_' + Date.now(),
-      jobId: job.id,
-      jobTitle: job.title,
-      companyName: job.company,
-      createdAt: new Date().toISOString(),
-      roleSynthesis: payload.roleSynthesis || 'Key focus on execution, engineering rigor, and teamwork.',
-      coreConcepts: payload.coreConcepts || [],
-      technicalQuestions: payload.technicalQuestions || [],
-      behavioralQuestions: payload.behavioralQuestions || [],
-      questionsToAskInterviewer: payload.questionsToAskInterviewer || [],
-    };
+    if (hasApiKey) {
+      try {
+        const aiProvider = await getActiveAIProvider();
+        const prompt = buildInterviewPrepPrompt(job, resume);
+
+        const payload = await aiProvider.generateStructuredJson<any>(prompt, {
+          systemPrompt: INTERVIEW_PREP_SYSTEM_PROMPT,
+          temperature: 0.3,
+        });
+
+        briefing = {
+          id: 'prep_' + Date.now(),
+          jobId: job.id,
+          jobTitle: job.title,
+          companyName: job.company,
+          createdAt: new Date().toISOString(),
+          roleSynthesis: payload.roleSynthesis || 'Key focus on execution, engineering rigor, and teamwork.',
+          coreConcepts: payload.coreConcepts || [],
+          technicalQuestions: payload.technicalQuestions || [],
+          behavioralQuestions: payload.behavioralQuestions || [],
+          questionsToAskInterviewer: payload.questionsToAskInterviewer || [],
+        };
+      } catch (err) {
+        console.warn('[RezBuilder] LLM generation failed, using local engine:', err);
+        briefing = generateLocalInterviewPrep(job, resume);
+      }
+    } else {
+      // 100% Local Instant Engine
+      briefing = generateLocalInterviewPrep(job, resume);
+    }
 
     await this.saveBriefing(briefing);
     return briefing;

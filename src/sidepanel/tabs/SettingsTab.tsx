@@ -11,6 +11,7 @@ import {
   Sliders,
   Sparkles,
   AlertTriangle,
+  Zap,
 } from 'lucide-react';
 import { UserSettings, DEFAULT_SETTINGS, AIProviderType } from '../../types/settings';
 import { settingsStorage } from '../../services/storage/settingsStorage';
@@ -56,7 +57,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
       {/* Header */}
       <div className="flex items-center gap-2">
         <Settings className="w-4 h-4 text-brand-400" />
-        <h2 className="text-xs font-semibold text-white tracking-tight">Extension Settings & Privacy</h2>
+        <h2 className="text-xs font-semibold text-white tracking-tight">Extension Settings & Engine Mode</h2>
       </div>
 
       {saveSuccess && (
@@ -66,15 +67,33 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
         </div>
       )}
 
-      {/* AI Provider Config Card */}
+      {/* Engine Status Banner */}
+      <div className="p-4 rounded-xl bg-brand-950/30 border border-brand-500/30 space-y-2">
+        <div className="flex items-center gap-2 text-brand-300 text-xs font-semibold">
+          <Zap className="w-4 h-4 text-brand-400" />
+          <span>100% Local Deterministic Engine (Active)</span>
+        </div>
+        <p className="text-[11px] text-brand-200/80 leading-relaxed">
+          RezBuilder is configured to operate completely client-side. Resume tailoring, ATS scoring, and interview briefings run instantly without any LLM API keys or cloud dependencies.
+        </p>
+      </div>
+
+      {/* Optional AI Provider Config Card */}
       <div className="p-4 rounded-xl bg-surface-900 border border-surface-800 space-y-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-surface-200">
-          <Sparkles className="w-4 h-4 text-brand-400" />
-          <span>AI / LLM Provider</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-semibold text-surface-200">
+            <Sparkles className="w-4 h-4 text-surface-400" />
+            <span>Optional LLM Integration</span>
+          </div>
+          <span className="text-[10px] text-surface-500 font-mono">Optional</span>
         </div>
 
+        <p className="text-[11px] text-surface-400 leading-snug">
+          You can optionally connect an AI model key if you wish to experiment with cloud LLM responses. If omitted, the local rule-based engine is used automatically.
+        </p>
+
         <div>
-          <label className="text-[11px] text-surface-400 block mb-1">Active AI Provider</label>
+          <label className="text-[11px] text-surface-400 block mb-1">Provider Choice</label>
           <div className="grid grid-cols-3 gap-1.5">
             {(['anthropic', 'openai', 'gemini'] as AIProviderType[]).map((provider) => (
               <button
@@ -100,14 +119,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
               <label className="text-[11px] text-surface-400 flex items-center justify-between mb-1">
                 <span className="flex items-center gap-1">
                   <Key className="w-3 h-3 text-brand-400" />
-                  <span>Anthropic API Key</span>
+                  <span>Anthropic API Key (Optional)</span>
                 </span>
-                <span className="text-[10px] text-surface-500 font-mono">Stored locally in Chrome</span>
+                <span className="text-[10px] text-surface-500 font-mono">Stored locally</span>
               </label>
               <div className="relative">
                 <input
                   type={showApiKey ? 'text' : 'password'}
-                  placeholder="sk-ant-api03-..."
+                  placeholder="sk-ant-api03-... (leave empty for local engine)"
                   value={settings.anthropicApiKey}
                   onChange={(e) => setSettings({ ...settings, anthropicApiKey: e.target.value })}
                   className="w-full bg-surface-950 border border-surface-800 rounded-lg px-3 py-1.5 pr-8 text-xs text-white placeholder-surface-600 outline-none focus:border-brand-500 font-mono"
@@ -129,9 +148,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
                 onChange={(e) => setSettings({ ...settings, anthropicModel: e.target.value })}
                 className="w-full bg-surface-950 border border-surface-800 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-brand-500"
               >
-                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Recommended)</option>
-                <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Fastest)</option>
-                <option value="claude-3-opus-20240229">Claude 3 Opus (Deepest Reasoning)</option>
+                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                <option value="claude-3-opus-20240229">Claude 3 Opus</option>
               </select>
             </div>
           </div>
@@ -142,12 +161,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
           <div className="space-y-3 pt-1">
             <div>
               <label className="text-[11px] text-surface-400 flex items-center justify-between mb-1">
-                <span>OpenAI API Key</span>
+                <span>OpenAI API Key (Optional)</span>
                 <span className="text-[10px] text-surface-500 font-mono">Stored locally</span>
               </label>
               <input
                 type={showApiKey ? 'text' : 'password'}
-                placeholder="sk-proj-..."
+                placeholder="sk-proj-... (leave empty for local engine)"
                 value={settings.openaiApiKey || ''}
                 onChange={(e) => setSettings({ ...settings, openaiApiKey: e.target.value })}
                 className="w-full bg-surface-950 border border-surface-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder-surface-600 outline-none focus:border-brand-500 font-mono"
@@ -162,7 +181,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
               >
                 <option value="gpt-4o">GPT-4o</option>
                 <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="o1-preview">o1-preview</option>
               </select>
             </div>
           </div>
@@ -173,12 +191,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
           <div className="space-y-3 pt-1">
             <div>
               <label className="text-[11px] text-surface-400 flex items-center justify-between mb-1">
-                <span>Gemini API Key</span>
+                <span>Gemini API Key (Optional)</span>
                 <span className="text-[10px] text-surface-500 font-mono">Stored locally</span>
               </label>
               <input
                 type={showApiKey ? 'text' : 'password'}
-                placeholder="AIzaSy..."
+                placeholder="AIzaSy... (leave empty for local engine)"
                 value={settings.geminiApiKey || ''}
                 onChange={(e) => setSettings({ ...settings, geminiApiKey: e.target.value })}
                 className="w-full bg-surface-950 border border-surface-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder-surface-600 outline-none focus:border-brand-500 font-mono"
@@ -241,8 +259,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
         </div>
         <p className="text-[11px] text-surface-400 leading-relaxed">
           RezBuilder does not own any external servers or databases. All scraped jobs, uploaded resumes, ATS scores,
-          and API keys are stored exclusively on your device in <code className="font-mono text-surface-300">chrome.storage.local</code>.
-          Outbound network requests are sent directly to the AI provider endpoint you configure.
+          and settings are stored exclusively on your device in <code className="font-mono text-surface-300">chrome.storage.local</code>.
         </p>
       </div>
 

@@ -6,10 +6,10 @@ import {
   Edit2,
   Save,
   CheckCircle2,
-  RefreshCw,
   Layers,
   ArrowRight,
   ShieldCheck,
+  Zap,
 } from 'lucide-react';
 import { JobPosting } from '../../types/job';
 import { Resume, TailoredResume, ResumeSections } from '../../types/resume';
@@ -17,8 +17,7 @@ import { DiffViewer } from '../../components/tailor/DiffViewer';
 import { GapAlertCard } from '../../components/tailor/GapAlertCard';
 import { generateDocxResume } from '../../services/export/docxExporter';
 import { printResumeToPdf } from '../../services/export/pdfExporter';
-import { getActiveAIProvider } from '../../services/ai/aiFactory';
-import { TAILOR_RESUME_SYSTEM_PROMPT, buildTailorResumePrompt } from '../../prompts/tailorResume';
+import { tailorResumeLocally } from '../../services/tailor/localTailorEngine';
 
 interface TailorTabProps {
   job: JobPosting | null;
@@ -43,7 +42,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
   const [editedSections, setEditedSections] = useState<ResumeSections | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
-  const handleTailor = async () => {
+  const handleTailor = () => {
     if (!job || !activeResume) return;
 
     setIsTailoring(true);
@@ -51,38 +50,13 @@ export const TailorTab: React.FC<TailorTabProps> = ({
     setExportSuccess(null);
 
     try {
-      const aiProvider = await getActiveAIProvider();
-      const prompt = buildTailorResumePrompt(job, activeResume);
-
-      const payload = await aiProvider.generateStructuredJson<any>(prompt, {
-        systemPrompt: TAILOR_RESUME_SYSTEM_PROMPT,
-        temperature: 0.2,
-      });
-
-      const tailored: TailoredResume = {
-        id: 'tailored_' + Date.now(),
-        baseResumeId: activeResume.id,
-        jobId: job.id,
-        createdAt: new Date().toISOString(),
-        sections: {
-          contact: activeResume.sections.contact,
-          summary: payload.summary || activeResume.sections.summary,
-          experience: payload.experience || activeResume.sections.experience,
-          education: activeResume.sections.education,
-          skills: payload.skills || activeResume.sections.skills,
-          projects: activeResume.sections.projects,
-          certifications: activeResume.sections.certifications,
-        },
-        rawText: '',
-        changesSummary: payload.changesSummary || ['Reordered bullets and matched JD keywords.'],
-        unresolvedGaps: payload.unresolvedGaps || [],
-      };
-
+      // 100% Local, zero-LLM deterministic ATS tailoring engine
+      const tailored = tailorResumeLocally(job, activeResume);
       onSaveTailoredResume(tailored);
       setEditedSections(tailored.sections);
     } catch (err: any) {
       console.error(err);
-      setTailorError(err.message || 'Failed to tailor resume with AI. Check your API key in Settings.');
+      setTailorError(err.message || 'Failed to tailor resume.');
     } finally {
       setIsTailoring(false);
     }
@@ -135,7 +109,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
           </div>
           <span className="text-[10px] font-mono text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20 flex items-center gap-1">
             <ShieldCheck className="w-3 h-3" />
-            Zero Fabrication
+            100% Local Engine
           </span>
         </div>
 
@@ -161,11 +135,13 @@ export const TailorTab: React.FC<TailorTabProps> = ({
       {/* Tailor Action Card */}
       {!tailoredResume && (
         <div className="p-5 rounded-xl border border-surface-800 bg-surface-900/60 text-center space-y-3">
-          <Sparkles className="w-8 h-8 text-brand-400 mx-auto" />
+          <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mx-auto text-brand-400">
+            <Zap className="w-5 h-5" />
+          </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">AI ATS Customization</h3>
+            <h3 className="text-sm font-semibold text-white">Deterministic ATS Customization</h3>
             <p className="text-xs text-surface-400 max-w-xs mx-auto mt-1 leading-relaxed">
-              Rewrites bullet points to mirror JD terminology, reorders high-impact experience, and pinpoints unresolvable skill gaps without fabricating any data.
+              Standardizes action verbs, aligns keywords with the job posting, elevates high-relevance achievements, and surfaces skill gaps instantly without external LLM calls or API keys.
             </p>
           </div>
 
@@ -174,17 +150,8 @@ export const TailorTab: React.FC<TailorTabProps> = ({
             disabled={isTailoring || !job || !activeResume}
             className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 transition-all active:scale-[0.99] disabled:opacity-50"
           >
-            {isTailoring ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Tailoring Resume with Claude...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>Generate Tailored Resume</span>
-              </>
-            )}
+            <Sparkles className="w-4 h-4" />
+            <span>Generate Tailored Resume (Instant Local)</span>
           </button>
 
           {(!job || !activeResume) && (
@@ -236,11 +203,10 @@ export const TailorTab: React.FC<TailorTabProps> = ({
               </button>
               <button
                 onClick={handleTailor}
-                disabled={isTailoring}
                 className="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition-colors"
-                title="Re-generate Tailoring"
+                title="Re-run Local Customization"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isTailoring ? 'animate-spin text-brand-400' : ''}`} />
+                <Zap className="w-3.5 h-3.5 text-brand-400" />
               </button>
             </div>
           </div>
