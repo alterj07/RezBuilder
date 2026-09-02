@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 export interface MockChromeStore {
   local: Record<string, any>;
   sync: Record<string, any>;
+  session: Record<string, any>;
 }
 
 export interface SetupMockChromeResult {
@@ -11,6 +12,18 @@ export interface SetupMockChromeResult {
   messageListeners: ((message: any, sender: any, sendResponse: (response?: any) => void) => void | boolean)[];
   storageListeners: ((changes: Record<string, { oldValue?: any; newValue?: any }>, areaName: string) => void)[];
   resetStore: () => void;
+  /** Sets which tab `chrome.tabs.query({active:true})` resolves to. */
+  setActiveTab: (tabId: number | null, url?: string) => void;
+  /** Registers a tab whose content script responds to background messages. */
+  setTabScriptable: (tabId: number, scriptable: boolean) => void;
+  /** Fires chrome.tabs.onActivated for the given tab. */
+  activateTab: (tabId: number, url?: string) => Promise<void>;
+  /** Fires chrome.tabs.onUpdated for the given tab. */
+  updateTab: (tabId: number, changeInfo: any) => Promise<void>;
+  /** Fires chrome.tabs.onRemoved for the given tab. */
+  removeTab: (tabId: number) => Promise<void>;
+  /** Delivers a message to background listeners as if sent from a tab. */
+  sendFromTab: (tabId: number, message: any) => Promise<any>;
 }
 
 /**
@@ -20,7 +33,17 @@ export function setupMockChrome(): SetupMockChromeResult {
   const store: MockChromeStore = {
     local: {},
     sync: {},
+    session: {},
   };
+
+  let activeTabId: number | null = 1;
+  let activeTabUrl = 'https://boards.greenhouse.io/stripe/jobs/987654';
+  const nonScriptableTabs = new Set<number>();
+  const tabActivatedListeners: ((info: { tabId: number; windowId: number }) => any)[] = [];
+  const tabUpdatedListeners: ((tabId: number, changeInfo: any, tab: any) => any)[] = [];
+  const tabRemovedListeners: ((tabId: number, info: any) => any)[] = [];
+  const windowFocusListeners: ((windowId: number) => any)[] = [];
+  const installedListeners: (() => void)[] = [];
 
   const messageListeners: ((
     message: any,
@@ -33,7 +56,7 @@ export function setupMockChrome(): SetupMockChromeResult {
     areaName: string
   ) => void)[] = [];
 
-  const createStorageArea = (areaName: 'local' | 'sync') => {
+  const createStorageArea = (areaName: 'local' | 'sync' | 'session') => {
     const areaStore = store[areaName];
 
     return {
@@ -124,6 +147,7 @@ export function setupMockChrome(): SetupMockChromeResult {
     storage: {
       local: createStorageArea('local'),
       sync: createStorageArea('sync'),
+      session: createStorageArea('session'),
       onChanged: {
         addListener: vi.fn((fn) => {
           messageListeners;
@@ -153,6 +177,13 @@ export function setupMockChrome(): SetupMockChromeResult {
         return asyncResponseReceived ?? { success: true };
       }),
 
+      onInstalled: {
+        addListener: vi.fn((fn: () => void) => {
+          installedListeners.push(fn);
+        }),
+        removeListener: vi.fn(),
+      },
+
       onMessage: {
         addListener: vi.fn((fn) => {
           messageListeners.push(fn);
@@ -170,16 +201,49 @@ export function setupMockChrome(): SetupMockChromeResult {
     },
 
     tabs: {
-      query: vi.fn(async (_queryInfo: any) => [{ id: 1, url: 'https://boards.greenhouse.io/stripe/jobs/987654' }]),
-      sendMessage: vi.fn(async (_tabId: number, msg: any) => {
+      query: vi.fn(async (_queryInfo: any) =>
+        activeTabId === null ? [] : [{ id: activeTabId, url: activeTabUrl, windowId: 100 }]
+      ),
+      sendMessage: vi.fn(async (tabId: number, msg: any) => {
+        if (nonScriptableTabs.has(tabId)) {
+          throw new Error('Could not establish connection. Receiving end does not exist.');
+        }
         let asyncResponseReceived: any = null;
         for (const listener of messageListeners) {
-          listener(msg, { id: 'rezbuilder-sender' }, (response: any) => {
+          listener(msg, { id: 'rezbuilder-sender', tab: { id: tabId, url: activeTabUrl } }, (response: any) => {
             asyncResponseReceived = response;
           });
         }
         return asyncResponseReceived ?? { success: true };
       }),
+      onActivated: {
+        addListener: vi.fn((fn) => {
+          tabActivatedListeners.push(fn);
+        }),
+        removeListener: vi.fn(),
+      },
+      onUpdated: {
+        addListener: vi.fn((fn) => {
+          tabUpdatedListeners.push(fn);
+        }),
+        removeListener: vi.fn(),
+      },
+      onRemoved: {
+        addListener: vi.fn((fn) => {
+          tabRemovedListeners.push(fn);
+        }),
+        removeListener: vi.fn(),
+      },
+    },
+
+    windows: {
+      WINDOW_ID_NONE: -1,
+      onFocusChanged: {
+        addListener: vi.fn((fn) => {
+          windowFocusListeners.push(fn);
+        }),
+        removeListener: vi.fn(),
+      },
     },
 
     contextMenus: {
@@ -195,8 +259,59 @@ export function setupMockChrome(): SetupMockChromeResult {
   const resetStore = () => {
     Object.keys(store.local).forEach((k) => delete store.local[k]);
     Object.keys(store.sync).forEach((k) => delete store.sync[k]);
+    Object.keys(store.session).forEach((k) => delete store.session[k]);
     messageListeners.length = 0;
     storageListeners.length = 0;
+    tabActivatedListeners.length = 0;
+    tabUpdatedListeners.length = 0;
+    tabRemovedListeners.length = 0;
+    windowFocusListeners.length = 0;
+    installedListeners.length = 0;
+    nonScriptableTabs.clear();
+    activeTabId = 1;
+  };
+
+  const setActiveTab = (tabId: number | null, url?: string) => {
+    activeTabId = tabId;
+    if (url) activeTabUrl = url;
+  };
+
+  const setTabScriptable = (tabId: number, scriptable: boolean) => {
+    if (scriptable) nonScriptableTabs.delete(tabId);
+    else nonScriptableTabs.add(tabId);
+  };
+
+  // Each driver awaits the listeners it fires so tests observe settled state.
+  const activateTab = async (tabId: number, url?: string) => {
+    setActiveTab(tabId, url);
+    await Promise.all(tabActivatedListeners.map((fn) => fn({ tabId, windowId: 100 })));
+  };
+
+  const updateTab = async (tabId: number, changeInfo: any) => {
+    await Promise.all(
+      tabUpdatedListeners.map((fn) => fn(tabId, changeInfo, { id: tabId, url: activeTabUrl }))
+    );
+  };
+
+  const removeTab = async (tabId: number) => {
+    await Promise.all(tabRemovedListeners.map((fn) => fn(tabId, { windowId: 100, isWindowClosing: false })));
+  };
+
+  const sendFromTab = async (tabId: number, message: any) => {
+    let response: any = null;
+    const pending: Promise<any>[] = [];
+    for (const listener of messageListeners) {
+      const result: any = listener(message, { id: 'rezbuilder', tab: { id: tabId, url: activeTabUrl } }, (r: any) => {
+        response = r;
+      });
+      if (result && typeof result.then === 'function') pending.push(result);
+    }
+    await Promise.all(pending);
+    // Background handlers respond from an async IIFE; yield until it settles.
+    for (let i = 0; i < 20 && response === null; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return response;
   };
 
   return {
@@ -205,5 +320,11 @@ export function setupMockChrome(): SetupMockChromeResult {
     messageListeners,
     storageListeners,
     resetStore,
+    setActiveTab,
+    setTabScriptable,
+    activateTab,
+    updateTab,
+    removeTab,
+    sendFromTab,
   };
 }
