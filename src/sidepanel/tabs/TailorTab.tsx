@@ -17,7 +17,9 @@ import { DiffViewer } from '../../components/tailor/DiffViewer';
 import { GapAlertCard } from '../../components/tailor/GapAlertCard';
 import { generateDocxResume } from '../../services/export/docxExporter';
 import { printResumeToPdf } from '../../services/export/pdfExporter';
-import { tailorResumeLocally } from '../../services/tailor/localTailorEngine';
+import { tailorService, TailoredResumeResult } from '../../services/tailor/tailorService';
+import { getStoredSettings } from '../../services/ai/aiFactory';
+import { UserSettings } from '../../types/settings';
 
 interface TailorTabProps {
   job: JobPosting | null;
@@ -41,8 +43,9 @@ export const TailorTab: React.FC<TailorTabProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedSections, setEditedSections] = useState<ResumeSections | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+  const [tailorResult, setTailorResult] = useState<TailoredResumeResult | null>(null);
 
-  const handleTailor = () => {
+  const handleTailor = async () => {
     if (!job || !activeResume) return;
 
     setIsTailoring(true);
@@ -50,10 +53,27 @@ export const TailorTab: React.FC<TailorTabProps> = ({
     setExportSuccess(null);
 
     try {
-      // 100% Local, zero-LLM deterministic ATS tailoring engine
-      const tailored = tailorResumeLocally(job, activeResume);
-      onSaveTailoredResume(tailored);
-      setEditedSections(tailored.sections);
+      const settings: UserSettings = await getStoredSettings();
+      let apiKey = settings.anthropicApiKey;
+      let model = settings.anthropicModel;
+
+      if (settings.aiProvider === 'openai') {
+        apiKey = settings.openaiApiKey || '';
+        model = settings.openaiModel || 'gpt-4o';
+      } else if (settings.aiProvider === 'gemini') {
+        apiKey = settings.geminiApiKey || '';
+        model = settings.geminiModel || 'gemini-1.5-pro';
+      }
+
+      const result = await tailorService.tailorResume(job, activeResume, {
+        provider: settings.aiProvider,
+        apiKey,
+        model,
+      });
+
+      setTailorResult(result);
+      onSaveTailoredResume(result.tailoredResume);
+      setEditedSections(result.tailoredResume.sections);
     } catch (err: any) {
       console.error(err);
       setTailorError(err.message || 'Failed to tailor resume.');
@@ -109,7 +129,9 @@ export const TailorTab: React.FC<TailorTabProps> = ({
           </div>
           <span className="text-[10px] font-mono text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20 flex items-center gap-1">
             <ShieldCheck className="w-3 h-3" />
-            100% Local Engine
+            {tailorResult?.strategy === 'ai_llm'
+              ? `AI (${tailorResult.provider || 'LLM'})`
+              : '100% Local Engine'}
           </span>
         </div>
 

@@ -20,7 +20,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'inline' | 'split'>('inline');
 
-  const wordDiff = diffWords(originalText, tailoredText);
+  const wordDiff = diffWords(originalText || '', tailoredText || '');
 
   return (
     <div className="rounded-xl border border-surface-800 bg-surface-900/60 overflow-hidden shadow-sm transition-all hover:border-surface-700">
@@ -71,7 +71,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
         {bulletDiffs && bulletDiffs.length > 0 ? (
           <div className="space-y-3 font-sans">
             {bulletDiffs.map((diff, idx) => {
-              const bDiff = diffWords(diff.original, diff.tailored);
+              const bDiff = diffWords(diff.original || '', diff.tailored || '');
               return (
                 <div key={idx} className="p-2.5 rounded-lg bg-surface-950/60 border border-surface-800/80 space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -145,14 +145,14 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
               <div className="text-[10px] text-surface-500 font-mono mb-1.5 flex items-center gap-1">
                 <span>BEFORE</span>
               </div>
-              <p className="whitespace-pre-wrap leading-relaxed">{originalText}</p>
+              <p className="whitespace-pre-wrap leading-relaxed">{originalText || ''}</p>
             </div>
             <div className="p-3 rounded-lg bg-brand-950/20 border border-brand-800/30 text-surface-100">
               <div className="text-[10px] text-brand-400 font-mono mb-1.5 flex items-center gap-1">
                 <Check className="w-3 h-3 text-brand-400" />
                 <span>AFTER (TAILORED)</span>
               </div>
-              <p className="whitespace-pre-wrap leading-relaxed">{tailoredText}</p>
+              <p className="whitespace-pre-wrap leading-relaxed">{tailoredText || ''}</p>
             </div>
           </div>
         )}

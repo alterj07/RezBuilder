@@ -255,11 +255,11 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                         )}
                       </div>
                       <div className="text-[11px] text-surface-400 mt-1 flex items-center gap-2">
-                        <span>{resume.fileName}</span>
+                        <span>{resume.fileName || 'Resume'}</span>
                         <span>•</span>
-                        <span>{resume.sections.skills.length} skills</span>
+                        <span>{(resume.sections?.skills || []).length} skills</span>
                         <span>•</span>
-                        <span>{resume.sections.experience.length} roles</span>
+                        <span>{(resume.sections?.experience || []).length} roles</span>
                       </div>
                     </div>
 
@@ -286,31 +286,31 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                     <div className="p-3.5 bg-surface-950 border-t border-surface-800 text-xs space-y-3 animate-fadeIn">
                       {/* Contact Line */}
                       <div className="flex flex-wrap gap-2 text-[11px] text-surface-400 pb-2 border-b border-surface-800/60">
-                        {resume.sections.contact.email && (
+                        {resume.sections?.contact?.email && (
                           <span className="flex items-center gap-1">
                             <Mail className="w-3 h-3 text-brand-400" />
                             {resume.sections.contact.email}
                           </span>
                         )}
-                        {resume.sections.contact.phone && (
+                        {resume.sections?.contact?.phone && (
                           <span className="flex items-center gap-1">
                             <Phone className="w-3 h-3 text-brand-400" />
                             {resume.sections.contact.phone}
                           </span>
                         )}
-                        {resume.sections.contact.location && (
+                        {resume.sections?.contact?.location && (
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3 h-3 text-brand-400" />
                             {resume.sections.contact.location}
                           </span>
                         )}
-                        {resume.sections.contact.linkedin && (
+                        {resume.sections?.contact?.linkedin && (
                           <span className="flex items-center gap-1">
                             <Linkedin className="w-3 h-3 text-brand-400" />
                             LinkedIn
                           </span>
                         )}
-                        {resume.sections.contact.github && (
+                        {resume.sections?.contact?.github && (
                           <span className="flex items-center gap-1">
                             <Github className="w-3 h-3 text-brand-400" />
                             GitHub
@@ -319,7 +319,7 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                       </div>
 
                       {/* Summary */}
-                      {resume.sections.summary && (
+                      {resume.sections?.summary && (
                         <div>
                           <div className="text-[10px] font-mono uppercase text-surface-500 font-semibold mb-1">
                             Summary
@@ -329,22 +329,22 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                       )}
 
                       {/* Experience */}
-                      {resume.sections.experience.length > 0 && (
+                      {(resume.sections?.experience || []).length > 0 && (
                         <div>
                           <div className="text-[10px] font-mono uppercase text-surface-500 font-semibold mb-1">
-                            Experience ({resume.sections.experience.length})
+                            Experience ({(resume.sections?.experience || []).length})
                           </div>
                           <div className="space-y-2">
-                            {resume.sections.experience.map((exp, idx) => (
+                            {(resume.sections?.experience || []).map((exp, idx) => (
                               <div key={idx} className="p-2 rounded bg-surface-900/80 border border-surface-850">
                                 <div className="font-medium text-surface-200 text-xs">
-                                  {exp.title} • <span className="text-brand-300">{exp.company}</span>
+                                  {exp.title || 'Role'} • <span className="text-brand-300">{exp.company || 'Company'}</span>
                                 </div>
                                 <div className="text-[10px] text-surface-500 font-mono">
                                   {[exp.startDate, exp.endDate || (exp.isCurrent ? 'Present' : '')].filter(Boolean).join(' – ')}
                                 </div>
                                 <ul className="mt-1 space-y-0.5">
-                                  {exp.bullets.map((b, bIdx) => (
+                                  {(exp.bullets || []).map((b, bIdx) => (
                                     <li key={bIdx} className="text-[11px] text-surface-400 leading-snug flex items-start gap-1">
                                       <span className="text-surface-600">•</span>
                                       <span>{b}</span>
@@ -358,13 +358,13 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                       )}
 
                       {/* Skills */}
-                      {resume.sections.skills.length > 0 && (
+                      {(resume.sections?.skills || []).length > 0 && (
                         <div>
                           <div className="text-[10px] font-mono uppercase text-surface-500 font-semibold mb-1">
-                            Parsed Skills ({resume.sections.skills.length})
+                            Parsed Skills ({(resume.sections?.skills || []).length})
                           </div>
                           <div className="flex flex-wrap gap-1">
-                            {resume.sections.skills.map((s, idx) => (
+                            {(resume.sections?.skills || []).map((s, idx) => (
                               <span
                                 key={idx}
                                 className="text-[10px] px-1.5 py-0.5 rounded bg-surface-900 text-surface-300 border border-surface-800"
@@ -377,12 +377,12 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                       )}
 
                       {/* Education */}
-                      {resume.sections.education.length > 0 && (
+                      {(resume.sections?.education || []).length > 0 && (
                         <div>
                           <div className="text-[10px] font-mono uppercase text-surface-500 font-semibold mb-1">
                             Education
                           </div>
-                          {resume.sections.education.map((edu, idx) => (
+                          {(resume.sections?.education || []).map((edu, idx) => (
                             <div key={idx} className="text-[11px] text-surface-300">
                               <span className="font-medium">{edu.institution}</span>
                               {edu.degree && <span> — {edu.degree}</span>}

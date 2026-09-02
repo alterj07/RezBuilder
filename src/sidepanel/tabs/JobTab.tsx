@@ -155,9 +155,9 @@ export const JobTab: React.FC<JobTabProps> = ({
           </div>
 
           {/* Job Skills Pills */}
-          {job.requiredSkills.length > 0 && (
+          {(job.requiredSkills || []).length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
-              {job.requiredSkills.slice(0, 8).map((skill, idx) => (
+              {(job.requiredSkills || []).slice(0, 8).map((skill, idx) => (
                 <span
                   key={idx}
                   className="text-[10px] px-2 py-0.5 rounded-md bg-surface-950 text-surface-300 border border-surface-800"
@@ -165,9 +165,9 @@ export const JobTab: React.FC<JobTabProps> = ({
                   {skill}
                 </span>
               ))}
-              {job.requiredSkills.length > 8 && (
+              {(job.requiredSkills || []).length > 8 && (
                 <span className="text-[10px] px-1.5 py-0.5 text-surface-500">
-                  +{job.requiredSkills.length - 8} more
+                  +{(job.requiredSkills || []).length - 8} more
                 </span>
               )}
             </div>
