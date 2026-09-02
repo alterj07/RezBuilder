@@ -29,6 +29,7 @@ interface JobTabProps {
   onManualJobSave: (job: JobPosting) => void;
   onNavigateToTailor: () => void;
   isLoading: boolean;
+  scrapeNotice?: string | null;
 }
 
 export const JobTab: React.FC<JobTabProps> = ({
@@ -40,6 +41,7 @@ export const JobTab: React.FC<JobTabProps> = ({
   onManualJobSave,
   onNavigateToTailor,
   isLoading,
+  scrapeNotice = null,
 }) => {
   const [selectedPreset, setSelectedPreset] = useState<AtsPresetName>('standard');
   const [showManualModal, setShowManualModal] = useState(false);
@@ -114,6 +116,17 @@ export const JobTab: React.FC<JobTabProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Scrape Outcome Notice */}
+      {scrapeNotice && (
+        <div
+          data-testid="scrape-notice"
+          className="flex items-start gap-2 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-[11px] text-amber-300 leading-snug"
+        >
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+          <span>{scrapeNotice}</span>
+        </div>
+      )}
 
       {/* Active Job Card */}
       {job ? (

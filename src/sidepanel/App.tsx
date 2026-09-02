@@ -26,6 +26,7 @@ export default function App() {
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null);
   const [tailoredResume, setTailoredResume] = useState<TailoredResume | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [scrapeNotice, setScrapeNotice] = useState<string | null>(null);
 
   // Load initial data
   const loadData = async () => {
@@ -41,14 +42,25 @@ export default function App() {
       await resumeStorage.setActiveResume(storedResumes[0].id);
     }
 
-    // 2. Active Job from storage
+    // 2. Active Job from storage (immediate paint)
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       const stored = await chrome.storage.local.get(['activeJob', 'activeTailoredResume']);
-      if (stored.activeJob) {
-        setJob(stored.activeJob);
-      }
+      setJob(stored.activeJob || null);
       if (stored.activeTailoredResume) {
         setTailoredResume(stored.activeTailoredResume);
+      }
+    }
+
+    // 3. Reconcile against the tab actually in view. The panel outlives any one
+    // tab, so a stored job may belong to a tab the user has since left.
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      try {
+        const response: any = await chrome.runtime.sendMessage({ type: 'GET_ACTIVE_TAB_JOB' });
+        if (response && 'job' in response) {
+          setJob(response.job || null);
+        }
+      } catch {
+        // Background worker asleep or unavailable; storage value stands.
       }
     }
   };
@@ -62,6 +74,7 @@ export default function App() {
         if (areaName === 'local') {
           if (changes.activeJob) {
             setJob(changes.activeJob.newValue || null);
+            setScrapeNotice(null);
           }
           if (changes.rezbuilder_resumes) {
             setResumes(changes.rezbuilder_resumes.newValue || []);
@@ -108,26 +121,42 @@ export default function App() {
 
   const handleRefreshScrape = () => {
     setIsLoading(true);
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]?.id) {
-          chrome.tabs.sendMessage(tabs[0].id, { type: 'SCRAPE_CURRENT_PAGE' }, (response) => {
-            if (chrome.runtime?.lastError) {
-              setIsLoading(false);
-              return;
-            }
-            setIsLoading(false);
-            if (response && response.success && response.job) {
-              setJob(response.job);
-            }
-          });
-        } else {
-          setIsLoading(false);
-        }
-      });
-    } else {
+    setScrapeNotice(null);
+
+    if (typeof chrome === 'undefined' || !chrome.tabs) {
       setTimeout(() => setIsLoading(false), 500);
+      return;
     }
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0]?.id) {
+        setIsLoading(false);
+        setScrapeNotice('No active tab to scan.');
+        return;
+      }
+
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'SCRAPE_CURRENT_PAGE' }, (response) => {
+        setIsLoading(false);
+
+        // No content script in the tab: restricted page, or the tab was open
+        // before the extension loaded and needs a refresh.
+        if (chrome.runtime?.lastError) {
+          setJob(null);
+          setScrapeNotice('Cannot read this tab. Reload the page and try again.');
+          return;
+        }
+
+        if (response && response.success && response.job) {
+          setJob(response.job);
+          return;
+        }
+
+        // An explicit scan that finds nothing must clear the panel, otherwise a
+        // previous tab's posting looks like the current page's.
+        setJob(null);
+        setScrapeNotice(response?.error || 'No job posting found on this page.');
+      });
+    });
   };
 
   const handleManualJobSave = async (manualJob: JobPosting) => {
@@ -263,6 +292,7 @@ export default function App() {
             onManualJobSave={handleManualJobSave}
             onNavigateToTailor={() => setActiveTab('tailor')}
             isLoading={isLoading}
+            scrapeNotice={scrapeNotice}
           />
         )}
 
