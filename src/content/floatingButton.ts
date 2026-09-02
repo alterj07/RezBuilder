@@ -33,6 +33,15 @@ export class FloatingButton {
     }
   }
 
+  public showStatus(status: 'idle' | 'loading' | 'success' | 'error', message: string = '') {
+    this.render(status, message);
+    if (status !== 'idle') {
+      setTimeout(() => {
+        this.render('idle');
+      }, 3500);
+    }
+  }
+
   private render(status: 'idle' | 'loading' | 'success' | 'error' = 'idle', message: string = '') {
     if (!this.shadow) return;
 

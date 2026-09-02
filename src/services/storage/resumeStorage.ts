@@ -8,17 +8,24 @@ let memoryStore: Record<string, any> = {};
 
 async function storageGet<T>(key: string, defaultValue: T): Promise<T> {
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const result = await chrome.storage.local.get([key]);
-    return result[key] !== undefined ? result[key] : defaultValue;
+    try {
+      const result = await chrome.storage.local.get([key]);
+      return result[key] !== undefined ? result[key] : defaultValue;
+    } catch {
+      return memoryStore[key] !== undefined ? memoryStore[key] : defaultValue;
+    }
   }
   return memoryStore[key] !== undefined ? memoryStore[key] : defaultValue;
 }
 
 async function storageSet(key: string, value: any): Promise<void> {
+  memoryStore[key] = value;
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    await chrome.storage.local.set({ [key]: value });
-  } else {
-    memoryStore[key] = value;
+    try {
+      await chrome.storage.local.set({ [key]: value });
+    } catch {
+      // Handled via memoryStore
+    }
   }
 }
 

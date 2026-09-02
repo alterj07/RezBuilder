@@ -37,7 +37,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
     // Open side panel
     if (tab.windowId && chrome.sidePanel?.open) {
-      chrome.sidePanel.open({ windowId: tab.windowId });
+      chrome.sidePanel.open({ windowId: tab.windowId }).catch((err) => {
+        console.warn('Could not open side panel:', err);
+      });
     }
   }
 });
@@ -53,7 +55,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.type === 'OPEN_SIDE_PANEL' && _sender.tab?.windowId) {
     if (chrome.sidePanel?.open) {
-      chrome.sidePanel.open({ windowId: _sender.tab.windowId });
+      chrome.sidePanel.open({ windowId: _sender.tab.windowId }).catch((err) => {
+        console.warn('Could not open side panel:', err);
+      });
       sendResponse({ success: true });
     }
     return true;
