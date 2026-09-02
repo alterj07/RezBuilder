@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "RezBuilder — AI Job-Application Copilot",
+  "name": "RezBuilder \u2014 AI Job-Application Copilot",
   "version": "1.0.0",
   "description": "AI-powered copilot for job applications: ATS scoring, resume tailoring, and interview prep.",
   "permissions": [
     "storage",
     "sidePanel",
     "contextMenus",
+    "tabs",
     "activeTab",
     "scripting"
   ],
@@ -36,7 +37,9 @@
         "https://jobs.lever.co/*",
         "<all_urls>"
       ],
-      "js": ["src/content/index.ts"],
+      "js": [
+        "src/content/index.ts"
+      ],
       "run_at": "document_idle"
     }
   ],
