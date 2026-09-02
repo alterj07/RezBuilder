@@ -11,7 +11,7 @@ export const SKILL_DICTIONARY: string[] = [
   
   // Backend & APIs
   'node.js', 'nodejs', 'express', 'nestjs', 'fastapi', 'django', 'flask', 'spring boot', 'ruby on rails',
-  'asp.net', '.net', 'grpc', 'microservices', 'serverless', 'websocket', 'event-driven architecture',
+  'asp.net', '.net', 'grpc', 'microservices', 'serverless', 'websocket', 'websockets', 'event-driven architecture',
   'rabbitmq', 'apache kafka', 'kafka', 'celery',
   
   // Databases & Storage
@@ -26,6 +26,7 @@ export const SKILL_DICTIONARY: string[] = [
   // AI / ML / Data
   'machine learning', 'deep learning', 'llm', 'nlp', 'pytorch', 'tensorflow', 'keras', 'langchain',
   'scikit-learn', 'pandas', 'numpy', 'data pipelines', 'etl', 'airflow', 'spark', 'hadoop',
+  'cuda', 'tensorrt',
   
   // Testing & Quality
   'jest', 'vitest', 'cypress', 'playwright', 'selenium', 'mocha', 'chai', 'junit', 'pytest',

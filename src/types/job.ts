@@ -9,7 +9,7 @@ export interface JobPosting {
   requiredSkills: string[];
   qualifications?: string[];
   url: string;
-  source: 'linkedin' | 'indeed' | 'greenhouse' | 'lever' | 'generic' | 'manual';
+  source: 'linkedin' | 'indeed' | 'greenhouse' | 'lever' | 'workday' | 'ashby' | 'generic' | 'manual';
   scrapedAt: string; // ISO string
   rawHtml?: string;
 }
