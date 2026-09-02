@@ -32,5 +32,6 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
+    include: ['tests/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
   },
 });

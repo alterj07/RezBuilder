@@ -4,7 +4,7 @@ import { calculatePlacementScore } from '../src/services/scoring/placementScorer
 import { checkSectionCompleteness } from '../src/services/scoring/sectionChecker';
 import { evaluateParseSuccess } from '../src/services/scoring/parseSuccessEvaluator';
 import { calculateRelevance } from '../src/services/scoring/relevanceScorer';
-import { calculateAtsScore, normalizeWeights } from '../src/services/scoring/atsEngine';
+import { calculateAtsScore, extractActionVerbRecommendations, normalizeWeights, scoreResume } from '../src/services/scoring/atsEngine';
 import { compareResumesAgainstJob } from '../src/services/scoring/multiResumeComparator';
 import { JobPosting } from '../src/types/job';
 import { Resume } from '../src/types/resume';
@@ -208,5 +208,42 @@ describe('ATS Scoring Engine - 5-Factor Weighted System', () => {
     expect(recommendation?.resumeId).toBe('res_high');
     expect(recommendation?.isRecommended).toBe(true);
     expect(recommendation?.recommendationReason).toContain('Highest match');
+  });
+
+  it('8. Action Verb Recommendations should detect weak verbs and suggest high-impact verbs', () => {
+    const resumeWithWeakVerbs: Resume = {
+      ...mockResumeHighMatch,
+      sections: {
+        ...mockResumeHighMatch.sections,
+        experience: [
+          {
+            id: 'exp_weak',
+            company: 'Acme Corp',
+            title: 'Software Developer',
+            bullets: [
+              'worked on building scalable microservices in Node.js and TypeScript.',
+              'helped with database performance tuning.',
+              'responsible for Docker and Kubernetes deployments on AWS.',
+              'Architected robust GraphQL APIs for client apps.',
+            ],
+          },
+        ],
+      },
+    };
+
+    const verbRecs = extractActionVerbRecommendations(resumeWithWeakVerbs);
+    expect(verbRecs.length).toBe(3);
+    expect(verbRecs[0].current.toLowerCase()).toBe('worked on');
+    expect(verbRecs[0].suggested).toBe('Engineered');
+    expect(verbRecs[0].context).toContain('worked on building scalable microservices');
+    expect(verbRecs[1].current.toLowerCase()).toBe('helped with');
+    expect(verbRecs[1].suggested).toBe('Spearheaded');
+    expect(verbRecs[2].current.toLowerCase()).toBe('responsible for');
+    expect(verbRecs[2].suggested).toBe('Architected and delivered');
+
+    const scoreResult = scoreResume(mockJob, resumeWithWeakVerbs);
+    expect(scoreResult.actionVerbRecommendations).toBeDefined();
+    expect(scoreResult.actionVerbRecommendations?.length).toBe(3);
+    expect(scoreResult.recommendations.some((r) => r.includes('weak bullet verbs'))).toBe(true);
   });
 });

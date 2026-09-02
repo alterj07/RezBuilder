@@ -5,6 +5,7 @@ import { IndeedScraper } from '../src/content/scrapers/indeedScraper';
 import { GreenhouseScraper } from '../src/content/scrapers/greenhouseScraper';
 import { LeverScraper } from '../src/content/scrapers/leverScraper';
 import { GenericScraper } from '../src/content/scrapers/genericScraper';
+import { scraperRegistry } from '../src/content/scrapers/scraperRegistry';
 
 describe('Keyword Extractor', () => {
   it('should extract hard skills and technologies accurately', () => {
@@ -32,10 +33,11 @@ describe('Keyword Extractor', () => {
   });
 });
 
-describe('Scrapers', () => {
+describe('Platform Scrapers', () => {
+  const parser = new DOMParser();
+
   it('LinkedInScraper should parse DOM correctly', () => {
     const scraper = new LinkedInScraper();
-    const parser = new DOMParser();
     const html = `
       <html>
         <body>
@@ -58,6 +60,7 @@ describe('Scrapers', () => {
     expect(result?.title).toBe('Staff Software Engineer');
     expect(result?.company).toBe('Acme Corp');
     expect(result?.remoteStatus).toBe('Hybrid');
+    expect(result?.source).toBe('linkedin');
     expect(result?.requiredSkills).toContain('go');
     expect(result?.requiredSkills).toContain('kubernetes');
     expect(result?.requiredSkills).toContain('postgresql');
@@ -65,7 +68,6 @@ describe('Scrapers', () => {
 
   it('IndeedScraper should parse DOM correctly', () => {
     const scraper = new IndeedScraper();
-    const parser = new DOMParser();
     const html = `
       <html>
         <body>
@@ -87,6 +89,7 @@ describe('Scrapers', () => {
     expect(result?.title).toBe('Backend Developer');
     expect(result?.company).toBe('Tech Innovations');
     expect(result?.remoteStatus).toBe('Remote');
+    expect(result?.source).toBe('indeed');
     expect(result?.requiredSkills).toContain('python');
     expect(result?.requiredSkills).toContain('django');
     expect(result?.requiredSkills).toContain('redis');
@@ -94,7 +97,6 @@ describe('Scrapers', () => {
 
   it('GreenhouseScraper should parse DOM correctly', () => {
     const scraper = new GreenhouseScraper();
-    const parser = new DOMParser();
     const html = `
       <html>
         <body>
@@ -115,6 +117,7 @@ describe('Scrapers', () => {
     expect(result).not.toBeNull();
     expect(result?.title).toBe('Lead DevOps Engineer');
     expect(result?.company).toBe('Stripe');
+    expect(result?.source).toBe('greenhouse');
     expect(result?.requiredSkills).toContain('kubernetes');
     expect(result?.requiredSkills).toContain('terraform');
     expect(result?.requiredSkills).toContain('gcp');
@@ -122,7 +125,6 @@ describe('Scrapers', () => {
 
   it('LeverScraper should parse DOM correctly', () => {
     const scraper = new LeverScraper();
-    const parser = new DOMParser();
     const html = `
       <html>
         <body>
@@ -147,40 +149,142 @@ describe('Scrapers', () => {
     expect(result).not.toBeNull();
     expect(result?.title).toBe('Product Manager');
     expect(result?.remoteStatus).toBe('On-site');
+    expect(result?.source).toBe('lever');
     expect(result?.requiredSkills).toContain('agile');
     expect(result?.requiredSkills).toContain('jira');
     expect(result?.requiredSkills).toContain('sql');
   });
 
-  it('GenericScraper should parse arbitrary job descriptions', () => {
+  it('GenericScraper should parse Schema.org JSON-LD structured data', () => {
     const scraper = new GenericScraper();
-    const parser = new DOMParser();
     const html = `
       <html>
-        <head><title>Senior React Engineer at StartupXYZ</title></head>
+        <head>
+          <script type="application/ld+json">
+          {
+            "@context": "https://schema.org",
+            "@type": "JobPosting",
+            "title": "Principal Architect",
+            "description": "Architect mission-critical cloud infrastructure with Kubernetes, Golang, and AWS.",
+            "hiringOrganization": {
+              "@type": "Organization",
+              "name": "CloudScale Inc"
+            }
+          }
+          </script>
+        </head>
         <body>
-          <header>Company Navigation</header>
-          <main>
-            <h1 class="job-title">Senior React Engineer</h1>
-            <div class="job-description">
-              <h3>About the Role</h3>
-              <p>We are seeking a talented React developer. You will build user interfaces with Next.js, Tailwind CSS, and TypeScript.</p>
-              <h3>Qualifications</h3>
-              <p>5+ years building production web applications. Experience with REST API design and Agile development. Full-time position. Apply now.</p>
-            </div>
-          </main>
+          <h1>Careers</h1>
         </body>
       </html>
     `;
     const doc = parser.parseFromString(html, 'text/html');
-    const url = 'https://startupxyz.com/careers/senior-react-engineer';
+    const url = 'https://careers.cloudscale.io/jobs/123';
 
     expect(scraper.canHandle(url, doc)).toBe(true);
     const result = scraper.scrape(url, doc);
     expect(result).not.toBeNull();
-    expect(result?.title).toBe('Senior React Engineer');
-    expect(result?.requiredSkills).toContain('react');
-    expect(result?.requiredSkills).toContain('next.js');
-    expect(result?.requiredSkills).toContain('tailwind');
+    expect(result?.title).toBe('Principal Architect');
+    expect(result?.company).toBe('CloudScale Inc');
+    expect(result?.source).toBe('generic');
+    expect(result?.requiredSkills).toContain('kubernetes');
+    expect(result?.requiredSkills).toContain('golang');
+    expect(result?.requiredSkills).toContain('aws');
+  });
+
+  it('GenericScraper should reject negative veto URLs such as algomaster.io and technical blogs', () => {
+    const scraper = new GenericScraper();
+    const algoDoc = parser.parseFromString(
+      '<html><body><h1>Course</h1><p>Functional requirements and 5 years experience.</p></body></html>',
+      'text/html'
+    );
+    expect(scraper.canHandle('https://algomaster.io/learn/system-design/course-introduction', algoDoc)).toBe(false);
+
+    const blogDoc = parser.parseFromString(
+      '<html><head><meta property="og:type" content="article" /></head><body><p>Job requirements and apply tips.</p></body></html>',
+      'text/html'
+    );
+    expect(scraper.canHandle('https://medium.com/@dev/how-to-prepare-for-interviews', blogDoc)).toBe(false);
+  });
+});
+
+describe('ScraperRegistry Integration', () => {
+  const parser = new DOMParser();
+
+  it('should register all 7 scrapers in correct priority order', () => {
+    const scrapers = scraperRegistry.getAllScrapers();
+    expect(scrapers.length).toBe(7);
+    expect(scrapers[0].name).toBe('LinkedIn');
+    expect(scrapers[1].name).toBe('Indeed');
+    expect(scrapers[2].name).toBe('Greenhouse');
+    expect(scrapers[3].name).toBe('Lever');
+    expect(scrapers[4].name).toBe('Workday');
+    expect(scrapers[5].name).toBe('Ashby');
+    expect(scrapers[6].name).toBe('Generic Job Scraper');
+  });
+
+  it('should detect and scrape Workday postings via registry', () => {
+    const url = 'https://adobe.wd5.myworkdayjobs.com/en-US/external/job/San-Jose/Engineer_123';
+    const html = `
+      <html>
+        <body>
+          <h1 data-automation-id="jobPostingHeader">Site Reliability Engineer</h1>
+          <div data-automation-id="jobPostingLocation">San Jose, CA (Remote)</div>
+          <div data-automation-id="jobPostingDescription">
+            Manage AWS infrastructure using Terraform, Kubernetes, and Python automation scripts.
+          </div>
+          <a data-automation-id="applyButton" href="#apply">Apply</a>
+        </body>
+      </html>
+    `;
+    const doc = parser.parseFromString(html, 'text/html');
+    const job = scraperRegistry.detectAndScrape(url, doc);
+
+    expect(job).not.toBeNull();
+    expect(job?.title).toBe('Site Reliability Engineer');
+    expect(job?.company).toBe('Adobe');
+    expect(job?.remoteStatus).toBe('Remote');
+    expect(job?.source).toBe('workday');
+    expect(job?.requiredSkills).toContain('aws');
+    expect(job?.requiredSkills).toContain('terraform');
+    expect(job?.requiredSkills).toContain('kubernetes');
+    expect(job?.requiredSkills).toContain('python');
+  });
+
+  it('should detect and scrape Ashby postings via registry', () => {
+    const url = 'https://jobs.ashbyhq.com/anthropic/5678-efgh';
+    const html = `
+      <html>
+        <body>
+          <h1 data-testid="job-posting-title">Alignment Research Engineer</h1>
+          <div data-testid="job-location">San Francisco, CA (Hybrid)</div>
+          <div data-testid="job-description">
+            Research LLM safety using Python, PyTorch, and distributed training systems on Kubernetes.
+          </div>
+          <a href="#apply">Apply</a>
+        </body>
+      </html>
+    `;
+    const doc = parser.parseFromString(html, 'text/html');
+    const job = scraperRegistry.detectAndScrape(url, doc);
+
+    expect(job).not.toBeNull();
+    expect(job?.title).toBe('Alignment Research Engineer');
+    expect(job?.company).toBe('Anthropic');
+    expect(job?.remoteStatus).toBe('Hybrid');
+    expect(job?.source).toBe('ashby');
+    expect(job?.requiredSkills).toContain('python');
+    expect(job?.requiredSkills).toContain('pytorch');
+    expect(job?.requiredSkills).toContain('kubernetes');
+  });
+
+  it('registry classify should return isJobPage: false on educational URLs', () => {
+    const url = 'https://algomaster.io/learn/system-design/course-introduction';
+    const doc = parser.parseFromString('<html><body><h1>Course</h1></body></html>', 'text/html');
+    const classification = scraperRegistry.classify(url, doc);
+
+    expect(classification.isJobPage).toBe(false);
+    expect(classification.confidence).toBe('none');
+    expect(classification.score).toBe(0);
   });
 });
