@@ -101,6 +101,11 @@ export const NEGATIVE_DOM_SELECTORS: { id: string; selector: string; reason: str
   },
 ];
 
+// LinkedIn serves postings from several surfaces: the dedicated job view, the
+// recommended/saved collections, and the search results pane, which renders the
+// selected posting inline and identifies it with a currentJobId query parameter.
+const LINKEDIN_JOB_URL = /\/jobs\/(?:view|collections|search|search-results)\b|[?&]currentJobId=\d+/i;
+
 const KNOWN_ATS_HOSTS = [
   'boards.greenhouse.io',
   'jobs.lever.co',
@@ -341,7 +346,7 @@ export class JobClassifier {
 
     for (const host of KNOWN_ATS_HOSTS) {
       if (url.includes(host)) {
-        if (host === 'linkedin.com' && !url.includes('/jobs/view/') && !url.includes('/jobs/collections/')) {
+        if (host === 'linkedin.com' && !LINKEDIN_JOB_URL.test(url)) {
           continue; // general LinkedIn feed/profile is not ATS
         }
         if (host === 'indeed.com' && !url.includes('/viewjob') && !url.includes('/rc/clk')) {
