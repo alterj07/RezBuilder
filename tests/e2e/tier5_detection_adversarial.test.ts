@@ -900,6 +900,21 @@ describe('Tier 5: Detection Engine & Platform Scrapers Adversarial Hardening Sui
       expect(result.confidence).toBe('none');
       expect(result.positiveSignals).toHaveLength(0);
       expect(result.negativeSignals.length).toBeGreaterThan(0);
+
+      // Verify naked URLs without leading www. or path vetoes are strictly vetoed at domain level
+      const nakedVetoUrls = [
+        'https://algomaster.io/about',
+        'https://devdocs.io/javascript/',
+        'https://coursera.org/specializations/',
+        'https://w3schools.com/tags/',
+      ];
+      for (const nakedUrl of nakedVetoUrls) {
+        const nakedResult = jobClassifier.classify(nakedUrl, doc);
+        expect(nakedResult.isJobPage).toBe(false);
+        expect(nakedResult.score).toBe(0);
+        expect(nakedResult.confidence).toBe('none');
+        expect(nakedResult.negativeSignals.length).toBeGreaterThan(0);
+      }
     });
 
     it('T5-DET-28: Keyword normalizer preserves complex tech names with special punctuation', () => {
@@ -922,5 +937,65 @@ describe('Tier 5: Detection Engine & Platform Scrapers Adversarial Hardening Sui
       expect(extracted).toContain('next.js');
       expect(extracted).toContain('rest api');
     });
+
+    it('T5-DET-29: Exhaustive naked URL domain-level veto on learning and documentation platforms', () => {
+      const educationalAndDocNakedUrls = [
+        'https://algomaster.io/topics/trees',
+        'http://algomaster.io/system-design',
+        'https://leetcode.com/problems/two-sum',
+        'https://coursera.org/specializations/python',
+        'https://udemy.com/topic/web-development',
+        'https://edx.org/programs/masters',
+        'https://pluralsight.com/paths/react',
+        'https://freecodecamp.org/news/learn-javascript',
+        'https://codecademy.com/catalog/language/python',
+        'https://khanacademy.org/computing/computer-science',
+        'https://educative.io/courses/grokking-the-system-design-interview',
+        'https://frontendmentor.io/challenges',
+        'https://hackerrank.com/challenges/simple-array-sum',
+        'https://geeksforgeeks.org/binary-search',
+        'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
+        'https://w3schools.com/tags/default.asp',
+        'https://wikipedia.org/wiki/Computer_science',
+        'https://wikimedia.org/index.html',
+        'https://devdocs.io/javascript/',
+        'https://readthedocs.io/en/stable/',
+        'https://gitbook.io/spaces/engineering',
+        'https://pkg.go.dev/net/http',
+        'https://caniuse.com/css-grid',
+      ];
+
+      const highSignalAdversarialHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head><title>Senior Architect - Platform & Infrastructure Overview</title></head>
+          <body>
+            <div id="job-details">
+              <h1>Senior Full Stack Software Architect</h1>
+              <div class="salary-range">$180,000 - $240,000 / year</div>
+              <div class="job-description">
+                <h2>Role Overview & Responsibilities</h2>
+                <p>Lead core engineering, design microservices, and scale Kubernetes clusters.</p>
+                <h2>Qualifications & Requirements</h2>
+                <p>5+ years experience with TypeScript, React, Node.js, and Distributed Systems.</p>
+              </div>
+              <button class="apply-btn" id="apply-button">Apply Now for Position</button>
+            </div>
+          </body>
+        </html>
+      `;
+      const doc = createDomDocument(highSignalAdversarialHtml);
+
+      for (const url of educationalAndDocNakedUrls) {
+        const result = jobClassifier.classify(url, doc);
+        expect(result.isJobPage).toBe(false);
+        expect(result.score).toBe(0);
+        expect(result.confidence).toBe('none');
+        expect(result.positiveSignals).toHaveLength(0);
+        expect(result.negativeSignals.length).toBeGreaterThan(0);
+        expect(result.negativeSignals.some(s => s.includes('VETO_URL'))).toBe(true);
+      }
+    });
   });
 });
+
