@@ -13,7 +13,7 @@
 | 3. Cross-Feature | 8 | Multi-module integration pipelines (Detection $\rightarrow$ Scraping $\rightarrow$ ATS Scoring $\rightarrow$ Tailoring $\rightarrow$ Form Auto-fill $\rightarrow$ Export) |
 | 4. Real-World Application | 6 | Realistic end-to-end application scenarios (Algomaster Negative, Greenhouse Stripe, Lever PM, Workday Enterprise, Schema.org, Ashby ML) |
 | 5. Adversarial Hardening | 62 | White-box adversarial stress testing (29 Detection & Scraper tests + 33 ATS, Tailoring & Form Auto-fill tests) |
-| **Total E2E Tests** | **136** | **100% Pass Rate (136/136 E2E, 378/378 Full Repository Tests)** |
+| **Total E2E Tests** | **136** | **100% Pass Rate (136/136 E2E, 413/413 Full Repository Tests)** |
 
 ## Feature Checklist
 | Feature | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Tier 5 |
@@ -35,3 +35,5 @@
 - `tests/e2e/tier4_real_world.test.ts`: 6 tests covering real-world end-to-end user workflows.
 - `tests/e2e/tier5_detection_adversarial.test.ts`: 29 tests covering detection engine & platform scrapers adversarial hardening.
 - `tests/e2e/tier5_ats_autofill_adversarial.test.ts`: 33 tests covering ATS scoring, resume tailoring, and form auto-fill adversarial hardening.
+- `tests/tabJobLifecycle.test.ts`: 27 tests covering the per-tab job registry, tab activation/navigation/close handling, active-job clearing, and LinkedIn job surface recognition.
+- `tests/contentAutoParse.test.ts`: 8 tests covering automatic content-script parsing, no-job reporting, and re-send suppression.

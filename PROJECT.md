@@ -26,6 +26,7 @@ RezBuilder is a Chrome Extension (Manifest V3) structured into four primary laye
 | 8 | Comprehensive E2E & Tier 1-4 Test Suite | Opaque-box and unit tests covering all features with mock DOM/Chrome harnesses | M4 (E2E Track) | R1-R3 |
 | 9 | Tier 5 Adversarial Coverage Hardening | White-box stress testing and boundary verification | M4 (Phase 2) | Quality Gate |
 | 10 | Conventional Git Commits & Remote Sync | Strict Conventional Commits formatting and sync with remote repository | M5 | R4 |
+| 11 | Per-Tab Automatic Job Parsing | Content script auto-parses on load/SPA navigation; background keeps one job per tab and empties the panel on non-job tabs | M6 | R2 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -36,10 +37,15 @@ RezBuilder is a Chrome Extension (Manifest V3) structured into four primary laye
 | M3 | UI Runtime Integration & CSP Polish | Remove external font link CSP warnings, verify sidepanel & floating button integration | M2 | DONE |
 | M4 | Final Milestone: E2E Test Suite Pass & Adversarial Hardening | Pass 100% of E2E test suite (Tiers 1-4) + Tier 5 Adversarial Coverage Hardening | E2E, M3 | DONE |
 | M5 | Conventional Git Commits & Remote Push | Verify all commit messages match Conventional Commits format and push to remote | M4 | DONE |
+| M6 | Per-Tab Job State & Automatic Parsing | Replace the single global `activeJob` with a per-tab registry, auto-parse without user action, clear the panel on non-job tabs | M5 | DONE |
 
 ## Interface Contracts
 
 ### Content Script ↔ Background Service Worker
+- `JOB_DETECTED` $\rightarrow$ payload `JobPosting`; background records it for `sender.tab.id` and mirrors it to `activeJob` when that tab is in view.
+- `NO_JOB_DETECTED` $\rightarrow$ background clears that tab's entry, emptying the panel when the tab is in view.
+- `REEVALUATE_PAGE` $\rightarrow$ background asks a tab to re-report; returns `{ isJobPage: boolean, job?: JobPosting }`.
+- `GET_ACTIVE_TAB_JOB` $\rightarrow$ side panel asks for the job belonging to the tab in view; returns `{ job: JobPosting | null }`.
 - `GET_JOB_DATA` $\rightarrow$ returns `{ isJobPage: boolean, job?: JobPosting }`
 - `TRIGGER_AUTOFILL` $\rightarrow$ payload `{ resume: Resume }`, returns `{ success: boolean, fieldsFilled: string[], message?: string }`
 - `OPEN_SIDEPANEL` $\rightarrow$ opens Chrome sidepanel for current tab.
