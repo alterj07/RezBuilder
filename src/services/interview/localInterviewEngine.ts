@@ -149,15 +149,15 @@ const TECH_KNOWLEDGE_BASE: Record<
 export function generateLocalInterviewPrep(job: JobPosting, _resume?: Resume): InterviewPrepBriefing {
   const extractedSkills = Array.from(
     new Set([
-      ...job.requiredSkills.map((s) => s.toLowerCase()),
-      ...extractSkillsFromText(job.title + ' ' + job.description),
+      ...(job.requiredSkills || []).map((s) => s.toLowerCase()),
+      ...extractSkillsFromText((job.title || '') + ' ' + (job.description || '')),
     ])
   );
 
   // 1. Role Synthesis
-  const isSenior = /senior|lead|staff|principal|director/i.test(job.title);
-  const isBackend = /backend|api|server|infrastructure|cloud|devops|data|platform/i.test(job.title + ' ' + job.description);
-  const isFrontend = /frontend|ui|ux|web|react|mobile/i.test(job.title + ' ' + job.description);
+  const isSenior = /senior|lead|staff|principal|director/i.test(job.title || '');
+  const isBackend = /backend|api|server|infrastructure|cloud|devops|data|platform/i.test((job.title || '') + ' ' + (job.description || ''));
+  const isFrontend = /frontend|ui|ux|web|react|mobile/i.test((job.title || '') + ' ' + (job.description || ''));
 
   let roleFocus = 'building scalable software, engineering excellence, and rapid feature execution';
   if (isBackend && isSenior) {
@@ -168,7 +168,9 @@ export function generateLocalInterviewPrep(job: JobPosting, _resume?: Resume): I
     roleFocus = 'technical leadership, cross-functional collaboration, system design, and mentoring junior engineers';
   }
 
-  const roleSynthesis = `For this ${job.title} role at ${job.company}, the hiring team is heavily prioritizing ${roleFocus}. They are looking for someone who can translate product requirements into maintainable, high-impact technical solutions while maintaining strong engineering rigor.`;
+  const roleTitle = job.title || 'Role';
+  const roleCompany = job.company || 'Company';
+  const roleSynthesis = `For this ${roleTitle} role at ${roleCompany}, the hiring team is heavily prioritizing ${roleFocus}. They are looking for someone who can translate product requirements into maintainable, high-impact technical solutions while maintaining strong engineering rigor.`;
 
   // 2. Core Concepts & Technologies
   const coreConcepts: CoreConceptItem[] = [];
@@ -208,7 +210,7 @@ export function generateLocalInterviewPrep(job: JobPosting, _resume?: Resume): I
 
   if (technicalQuestions.length < 3) {
     technicalQuestions.push({
-      question: `How would you architect an end-to-end solution for a core feature required by ${job.title}?`,
+      question: `How would you architect an end-to-end solution for a core feature required by ${job.title || 'this role'}?`,
       category: 'System Design',
       suggestedTalkingPoints: [
         'Clarify functional and non-functional requirements (traffic scale, latency, data retention).',
@@ -264,9 +266,9 @@ export function generateLocalInterviewPrep(job: JobPosting, _resume?: Resume): I
 
   return {
     id: 'prep_local_' + Date.now(),
-    jobId: job.id,
-    jobTitle: job.title,
-    companyName: job.company,
+    jobId: job.id || '',
+    jobTitle: job.title || '',
+    companyName: job.company || '',
     createdAt: new Date().toISOString(),
     roleSynthesis,
     coreConcepts: coreConcepts.slice(0, 6),

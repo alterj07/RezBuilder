@@ -8,6 +8,8 @@ import { INTERVIEW_PREP_SYSTEM_PROMPT, buildInterviewPrepPrompt } from '../../pr
 
 const BRIEFINGS_KEY = 'rezbuilder_interview_briefings';
 
+let memoryBriefings: InterviewPrepBriefing[] = [];
+
 export class InterviewService {
   /**
    * Generates an interview preparation briefing for a job.
@@ -69,8 +71,14 @@ export class InterviewService {
       briefings.unshift(briefing);
     }
 
+    memoryBriefings = briefings.slice(0, 20);
+
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      await chrome.storage.local.set({ [BRIEFINGS_KEY]: briefings.slice(0, 20) });
+      try {
+        await chrome.storage.local.set({ [BRIEFINGS_KEY]: memoryBriefings });
+      } catch (err) {
+        console.warn('[RezBuilder] chrome.storage.local.set error, saved in memoryBriefings fallback:', err);
+      }
     }
   }
 
@@ -79,10 +87,15 @@ export class InterviewService {
    */
   async getAllBriefings(): Promise<InterviewPrepBriefing[]> {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      const result = await chrome.storage.local.get([BRIEFINGS_KEY]);
-      return result[BRIEFINGS_KEY] || [];
+      try {
+        const result = await chrome.storage.local.get([BRIEFINGS_KEY]);
+        return result[BRIEFINGS_KEY] || [...memoryBriefings];
+      } catch (err) {
+        console.warn('[RezBuilder] chrome.storage.local.get error, using memoryBriefings fallback:', err);
+        return [...memoryBriefings];
+      }
     }
-    return [];
+    return [...memoryBriefings];
   }
 
   /**

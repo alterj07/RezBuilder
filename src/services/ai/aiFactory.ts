@@ -2,7 +2,7 @@ import { AIProvider } from './types';
 import { AnthropicProvider } from './anthropicProvider';
 import { OpenAIProvider } from './openaiProvider';
 import { GeminiProvider } from './geminiProvider';
-import { UserSettings, DEFAULT_SETTINGS } from '../../types/settings';
+import { AIProviderType, UserSettings, DEFAULT_SETTINGS } from '../../types/settings';
 
 const SETTINGS_KEY = 'rezbuilder_settings';
 
@@ -20,16 +20,38 @@ export async function saveStoredSettings(settings: UserSettings): Promise<void> 
   }
 }
 
+export class AIFactory {
+  public static getProvider(
+    provider: AIProviderType = 'anthropic',
+    apiKey: string = '',
+    model?: string
+  ): AIProvider {
+    switch (provider) {
+      case 'openai':
+        return new OpenAIProvider(apiKey, model || 'gpt-4o');
+      case 'gemini':
+        return new GeminiProvider(apiKey, model || 'gemini-1.5-pro');
+      case 'anthropic':
+      default:
+        return new AnthropicProvider(apiKey, model || 'claude-3-5-sonnet-20241022');
+    }
+  }
+
+  public static async getActiveProvider(): Promise<AIProvider> {
+    return getActiveAIProvider();
+  }
+}
+
 export async function getActiveAIProvider(): Promise<AIProvider> {
   const settings = await getStoredSettings();
 
   switch (settings.aiProvider) {
     case 'openai':
-      return new OpenAIProvider(settings.openaiApiKey || '', settings.openaiModel || 'gpt-4o');
+      return AIFactory.getProvider('openai', settings.openaiApiKey || '', settings.openaiModel);
     case 'gemini':
-      return new GeminiProvider(settings.geminiApiKey || '', settings.geminiModel || 'gemini-1.5-pro');
+      return AIFactory.getProvider('gemini', settings.geminiApiKey || '', settings.geminiModel);
     case 'anthropic':
     default:
-      return new AnthropicProvider(settings.anthropicApiKey || '', settings.anthropicModel || 'claude-3-5-sonnet-20241022');
+      return AIFactory.getProvider('anthropic', settings.anthropicApiKey || '', settings.anthropicModel);
   }
 }

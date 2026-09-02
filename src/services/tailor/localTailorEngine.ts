@@ -4,7 +4,7 @@ import { extractSkillsFromText } from '../../content/scrapers/keywordExtractor';
 import { calculateTenureYearsFromResume } from '../scoring/relevanceScorer';
 
 // High-impact ATS action verb replacements
-const WEAK_VERB_MAP: Record<string, string> = {
+export const WEAK_VERB_MAP: Record<string, string> = {
   'worked on': 'Engineered',
   'helped with': 'Spearheaded',
   'responsible for': 'Architected and delivered',
@@ -23,7 +23,7 @@ const WEAK_VERB_MAP: Record<string, string> = {
 };
 
 // Canonical skill casing map
-const SKILL_CASING_MAP: Record<string, string> = {
+export const SKILL_CASING_MAP: Record<string, string> = {
   'javascript': 'JavaScript',
   'typescript': 'TypeScript',
   'python': 'Python',
@@ -149,7 +149,7 @@ function tailorSummary(
   candidateSkills: string[],
   experienceYears: number
 ): string {
-  const matchingSkills = job.requiredSkills.filter((s) =>
+  const matchingSkills = (job.requiredSkills || []).filter((s) =>
     candidateSkills.some((cs) => cs.toLowerCase() === s.toLowerCase())
   );
 
@@ -158,7 +158,7 @@ function tailorSummary(
     .map((s) => SKILL_CASING_MAP[s.toLowerCase()] || s)
     .join(', ');
 
-  const titleClean = job.title.replace(/\b(remote|hybrid|onsite|contract|full-time)\b/gi, '').trim();
+  const titleClean = (job.title || 'Software Engineer').replace(/\b(remote|hybrid|onsite|contract|full-time)\b/gi, '').trim();
 
   if (originalSummary && originalSummary.length > 50) {
     // Reframe existing summary with target title alignment
@@ -178,29 +178,29 @@ function tailorSummary(
 export function tailorResumeLocally(job: JobPosting, resume: Resume): TailoredResume {
   const jdSkills = Array.from(
     new Set([
-      ...job.requiredSkills.map((s) => s.toLowerCase()),
-      ...extractSkillsFromText(job.title + ' ' + job.description),
+      ...(job.requiredSkills || []).map((s) => s.toLowerCase()),
+      ...extractSkillsFromText((job.title || '') + ' ' + (job.description || '')),
     ])
   );
 
-  const candidateSkills = resume.sections.skills.map((s) => s.toLowerCase());
+  const candidateSkills = (resume.sections?.skills || []).map((s) => s.toLowerCase());
   const candidateYears = calculateTenureYearsFromResume(resume);
 
   const changesSummary: string[] = [];
 
   // 1. Tailor Summary
   const tailoredSummaryText = tailorSummary(
-    resume.sections.summary,
+    resume.sections?.summary || '',
     job,
     candidateSkills,
     candidateYears
   );
-  changesSummary.push(`Aligned professional summary with target title (${job.title}) and core skills.`);
+  changesSummary.push(`Aligned professional summary with target title (${job.title || 'Target Role'}) and core skills.`);
 
   // 2. Tailor & Reorder Experience Bullets
   let totalOptimizedBullets = 0;
-  const tailoredExperience: ExperienceItem[] = resume.sections.experience.map((exp) => {
-    const scoredBullets = exp.bullets.map((b) => {
+  const tailoredExperience: ExperienceItem[] = (resume.sections?.experience || []).map((exp) => {
+    const scoredBullets = (exp.bullets || []).map((b) => {
       const { optimized, diff } = optimizeBullet(b, jdSkills);
       const score = scoreBulletRelevance(optimized, jdSkills);
       if (diff) totalOptimizedBullets++;
@@ -236,7 +236,7 @@ export function tailorResumeLocally(job: JobPosting, resume: Resume): TailoredRe
   const matchedSkills: string[] = [];
   const otherSkills: string[] = [];
 
-  for (const s of resume.sections.skills) {
+  for (const s of (resume.sections?.skills || [])) {
     const sLower = s.toLowerCase();
     const formatted = SKILL_CASING_MAP[sLower] || s;
     if (jdSkills.includes(sLower)) {
@@ -264,13 +264,13 @@ export function tailorResumeLocally(job: JobPosting, resume: Resume): TailoredRe
   }
 
   const tailoredSections: ResumeSections = {
-    contact: resume.sections.contact,
+    contact: resume.sections?.contact || {},
     summary: tailoredSummaryText,
     experience: tailoredExperience,
-    education: resume.sections.education,
+    education: resume.sections?.education || [],
     skills: prioritizedSkills,
-    projects: resume.sections.projects,
-    certifications: resume.sections.certifications,
+    projects: resume.sections?.projects || [],
+    certifications: resume.sections?.certifications,
   };
 
   return {
