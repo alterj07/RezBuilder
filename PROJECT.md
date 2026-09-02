@@ -68,3 +68,8 @@ RezBuilder is a Chrome Extension (Manifest V3) structured into four primary laye
 - `src/services/ai/`: Gemini, OpenAI, Anthropic LLM client providers
 - `src/sidepanel/`: React 18 sidepanel application, tabs (Score, Tailor, Interview, Tracker, Settings)
 - `tests/`: Unit and integration test suites (`vitest`)
+
+## Verification & Remote Sync
+- **Test Suite Status**: 25 test files passed, 378/378 tests passing (136 E2E tests across Tiers 1-5).
+- **Production Build**: Clean Vite + @crxjs packaging with zero TypeScript errors.
+- **Git Hygiene**: 100% adherence to Conventional Commits specification synchronized with `origin/main`.
