@@ -48,6 +48,13 @@ export interface PlacementBreakdown {
   details: string[];
 }
 
+export interface ActionVerbRecommendation {
+  current: string;
+  suggested: string;
+  context: string;
+  category?: string;
+}
+
 export interface AtsScoreResult {
   overallScore: number; // 0-100
   presetUsed: AtsPresetName;
@@ -60,6 +67,15 @@ export interface AtsScoreResult {
   parseScore: number;
   relevanceScore: number;
 
+  // Breakdown for interface contract compatibility
+  breakdown?: {
+    keywordMatch: number;
+    placementScore: number;
+    sectionCompleteness: number;
+    parseSuccess: number;
+    relevanceScore: number;
+  };
+
   // Detailed breakdowns
   keywordDetails: {
     totalKeywords: number;
@@ -67,6 +83,8 @@ export interface AtsScoreResult {
     missingKeywords: number;
     items: KeywordMatchDetail[];
   };
+  keywordGaps?: string[];
+  matchedKeywords?: string[];
   placementDetails: PlacementBreakdown;
   sectionDetails: {
     items: SectionCheckItem[];
@@ -79,8 +97,14 @@ export interface AtsScoreResult {
   
   // High-level summary & action items
   recommendations: string[];
+  actionVerbRecommendations?: ActionVerbRecommendation[];
+  isRecommended?: boolean;
   calculatedAt: string; // ISO string
 }
+
+export type ATSScoreResult = AtsScoreResult;
+export type ATSWeights = AtsWeights;
+export type ATSPresetName = AtsPresetName;
 
 export interface ResumeComparisonItem {
   resumeId: string;

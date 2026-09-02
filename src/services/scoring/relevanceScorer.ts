@@ -5,7 +5,8 @@ import { RelevanceBreakdown } from '../../types/scoring';
 /**
  * Extracts required years of experience from job posting text
  */
-export function extractRequiredYearsFromJob(text: string): number | undefined {
+export function extractRequiredYearsFromJob(text?: string): number | undefined {
+  if (!text) return undefined;
   const match = text.match(/(\d+)\+?\s*(?:-\s*\d+)?\s*(?:years?|yrs?)(?:\s+of)?\s+experience/i);
   if (match && match[1]) {
     return parseInt(match[1], 10);
@@ -18,7 +19,7 @@ export function extractRequiredYearsFromJob(text: string): number | undefined {
  */
 export function calculateTenureYearsFromResume(resume: Resume): number {
   // Check summary first (e.g. "7+ years of experience")
-  const summaryMatch = resume.sections.summary?.match(/(\d+)\+?\s*years?/i);
+  const summaryMatch = resume?.sections?.summary?.match(/(\d+)\+?\s*years?/i);
   if (summaryMatch && summaryMatch[1]) {
     return parseInt(summaryMatch[1], 10);
   }
@@ -26,10 +27,11 @@ export function calculateTenureYearsFromResume(resume: Resume): number {
   // Calculate from experience date ranges
   let totalYears = 0;
   const currentYear = new Date().getFullYear();
+  const expList = resume?.sections?.experience || [];
 
-  for (const exp of resume.sections.experience) {
-    const startYearMatch = exp.startDate?.match(/\b(19\d{2}|20\d{2})\b/);
-    const endYearMatch = exp.endDate?.match(/\b(19\d{2}|20\d{2})\b/);
+  for (const exp of expList) {
+    const startYearMatch = exp?.startDate?.match(/\b(19\d{2}|20\d{2})\b/);
+    const endYearMatch = exp?.endDate?.match(/\b(19\d{2}|20\d{2})\b/);
 
     if (startYearMatch) {
       const startYear = parseInt(startYearMatch[1], 10);
@@ -40,8 +42,8 @@ export function calculateTenureYearsFromResume(resume: Resume): number {
   }
 
   // If no dates, default based on number of experience entries
-  if (totalYears === 0 && resume.sections.experience.length > 0) {
-    totalYears = resume.sections.experience.length * 2;
+  if (totalYears === 0 && expList.length > 0) {
+    totalYears = expList.length * 2;
   }
 
   return totalYears || 3;
@@ -52,7 +54,7 @@ export function calculateTenureYearsFromResume(resume: Resume): number {
  */
 export function calculateRelevance(job: JobPosting, resume: Resume): RelevanceBreakdown {
   const notes: string[] = [];
-  const requiredYears = extractRequiredYearsFromJob(job.description);
+  const requiredYears = extractRequiredYearsFromJob(job?.description || '');
   const candidateYears = calculateTenureYearsFromResume(resume);
 
   // 1. Tenure Score (40% of relevance)
@@ -73,13 +75,14 @@ export function calculateRelevance(job: JobPosting, resume: Resume): RelevanceBr
   }
 
   // 2. Title Seniority & Domain Match (40% of relevance)
-  const jobTitleLower = job.title.toLowerCase();
-  const resumeTitles = resume.sections.experience.map((e) => e.title.toLowerCase());
+  const jobTitleLower = (job?.title || '').toLowerCase();
+  const resumeTitles = (resume?.sections?.experience || []).map((e) => (e?.title || '').toLowerCase());
   let titleMatchScore = 70;
 
   const seniorityKeywords = ['senior', 'lead', 'staff', 'principal', 'junior', 'entry', 'director', 'manager', 'head'];
   const matchedSeniority = seniorityKeywords.filter((s) => jobTitleLower.includes(s));
-  const resumeHasSeniority = seniorityKeywords.some((s) => resumeTitles.some((t) => t.includes(s) || resume.sections.summary.toLowerCase().includes(s)));
+  const summaryLower = (resume?.sections?.summary || '').toLowerCase();
+  const resumeHasSeniority = seniorityKeywords.some((s) => resumeTitles.some((t) => t.includes(s)) || summaryLower.includes(s));
 
   if (matchedSeniority.length > 0) {
     if (resumeHasSeniority) {
@@ -95,8 +98,8 @@ export function calculateRelevance(job: JobPosting, resume: Resume): RelevanceBr
 
   // 3. Education Match (20% of relevance)
   let educationMatchScore = 90;
-  const requiresDegree = /bachelor|master|phd|degree\s+in/i.test(job.description);
-  const hasDegree = resume.sections.education.some((e) => e.degree || e.institution);
+  const requiresDegree = /bachelor|master|phd|degree\s+in/i.test(job?.description || '');
+  const hasDegree = (resume?.sections?.education || []).some((e) => e?.degree || e?.institution);
 
   if (requiresDegree && !hasDegree) {
     educationMatchScore = 60;

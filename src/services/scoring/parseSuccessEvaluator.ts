@@ -12,8 +12,8 @@ export function evaluateParseSuccess(resume: Resume): {
   const issues: ParseIssue[] = [];
   let score = 100;
 
-  const rawText = resume.rawText;
-  const sections = resume.sections;
+  const rawText = resume?.rawText || '';
+  const sections = resume?.sections || ({} as any);
 
   // 1. Text length check
   if (rawText.length < 200) {
@@ -28,9 +28,9 @@ export function evaluateParseSuccess(resume: Resume): {
   // 2. Section Header Extraction Success
   let detectedCount = 0;
   if (sections.summary) detectedCount++;
-  if (sections.experience.length > 0) detectedCount++;
-  if (sections.education.length > 0) detectedCount++;
-  if (sections.skills.length > 0) detectedCount++;
+  if ((sections.experience || []).length > 0) detectedCount++;
+  if ((sections.education || []).length > 0) detectedCount++;
+  if ((sections.skills || []).length > 0) detectedCount++;
 
   if (detectedCount < 2) {
     score -= 30;
@@ -49,10 +49,11 @@ export function evaluateParseSuccess(resume: Resume): {
   }
 
   // 3. Date Consistency in Experience
-  if (sections.experience.length > 0) {
-    const dates = sections.experience
-      .map((e) => `${e.startDate || ''} - ${e.endDate || ''}`)
-      .filter((d) => d.trim() !== '-');
+  const expList = sections.experience || [];
+  if (expList.length > 0) {
+    const dates = expList
+      .map((e: any) => `${e?.startDate || ''} - ${e?.endDate || ''}`)
+      .filter((d: string) => d.trim() !== '-');
 
     if (dates.length === 0) {
       score -= 20;
@@ -76,8 +77,8 @@ export function evaluateParseSuccess(resume: Resume): {
   }
 
   // 5. Experience bullets structured
-  const totalBullets = sections.experience.reduce((acc, exp) => acc + exp.bullets.length, 0);
-  if (sections.experience.length > 0 && totalBullets === 0) {
+  const totalBullets = expList.reduce((acc: number, exp: any) => acc + (exp?.bullets || []).length, 0);
+  if (expList.length > 0 && totalBullets === 0) {
     score -= 15;
     issues.push({
       type: 'unstructured_bullet',

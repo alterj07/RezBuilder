@@ -63,11 +63,11 @@ export function calculateKeywordMatch(job: JobPosting, resume: Resume): {
   items: KeywordMatchDetail[];
 } {
   // Extract all target keywords from Job Posting
-  let jobKeywords = Array.from(new Set([...job.requiredSkills, ...extractSkillsFromText(job.title + ' ' + job.description)]));
+  let jobKeywords = Array.from(new Set([...(job.requiredSkills || []), ...extractSkillsFromText((job.title || '') + ' ' + (job.description || ''))]));
 
   if (jobKeywords.length === 0) {
     // Fallback: extract prominent capitalized words/technical terms
-    const words = job.description.match(/\b[A-Z][a-zA-Z0-9+#.]{2,}\b/g) || [];
+    const words = (job.description || '').match(/\b[A-Z][a-zA-Z0-9+#.]{2,}\b/g) || [];
     jobKeywords = Array.from(new Set(words.slice(0, 10).map((w) => w.toLowerCase())));
   }
 
@@ -85,11 +85,11 @@ export function calculateKeywordMatch(job: JobPosting, resume: Resume): {
   let matchCount = 0;
 
   // Prepare section texts for placement checking
-  const titleText = resume.sections.experience.map((e) => e.title).join(' ');
-  const experienceText = resume.sections.experience.map((e) => e.bullets.join(' ')).join(' ');
-  const summaryText = resume.sections.summary || '';
-  const skillsText = resume.sections.skills.join(' ');
-  const allResumeText = `${resume.rawText} ${skillsText}`;
+  const titleText = (resume.sections?.experience || []).map((e) => e.title).join(' ');
+  const experienceText = (resume.sections?.experience || []).map((e) => (e.bullets || []).join(' ')).join(' ');
+  const summaryText = resume.sections?.summary || '';
+  const skillsText = (resume.sections?.skills || []).join(' ');
+  const allResumeText = `${resume.rawText || ''} ${skillsText}`;
 
   for (const kw of jobKeywords) {
     const found = isKeywordPresent(kw, allResumeText);
@@ -104,11 +104,12 @@ export function calculateKeywordMatch(job: JobPosting, resume: Resume): {
       matchCount++;
     }
 
+    const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     items.push({
       keyword: kw,
       foundInResume: found,
-      frequencyInJob: (job.description.match(new RegExp(kw, 'gi')) || []).length || 1,
-      frequencyInResume: (allResumeText.match(new RegExp(kw, 'gi')) || []).length || (found ? 1 : 0),
+      frequencyInJob: ((job.description || '').match(new RegExp(kwEscaped, 'gi')) || []).length || 1,
+      frequencyInResume: (allResumeText.match(new RegExp(kwEscaped, 'gi')) || []).length || (found ? 1 : 0),
       placements,
     });
   }

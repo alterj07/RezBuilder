@@ -10,10 +10,10 @@ export function checkSectionCompleteness(resume: Resume): {
 } {
   const items: SectionCheckItem[] = [];
   let totalScore = 0;
-  const sections = resume.sections;
+  const sections = resume?.sections || ({} as any);
 
   // 1. Contact Information (25 pts)
-  const contact = sections.contact;
+  const contact = sections.contact || {};
   let contactPts = 0;
   const contactFeedback: string[] = [];
 
@@ -50,7 +50,7 @@ export function checkSectionCompleteness(resume: Resume): {
   });
 
   // 2. Work Experience & Dates (30 pts)
-  const exp = sections.experience;
+  const exp = sections.experience || [];
   let expQuality = 0;
   let expFeedback = '';
 
@@ -59,10 +59,10 @@ export function checkSectionCompleteness(resume: Resume): {
     let hasBullets = 0;
     let hasTitles = 0;
 
-    exp.forEach((e) => {
-      if (e.startDate || e.endDate) hasDates++;
-      if (e.bullets && e.bullets.length > 0) hasBullets++;
-      if (e.title && e.title !== 'Role') hasTitles++;
+    exp.forEach((e: any) => {
+      if (e?.startDate || e?.endDate) hasDates++;
+      if (e?.bullets && e.bullets.length > 0) hasBullets++;
+      if (e?.title && e.title !== 'Role') hasTitles++;
     });
 
     const dateRatio = hasDates / exp.length;
@@ -85,13 +85,13 @@ export function checkSectionCompleteness(resume: Resume): {
   });
 
   // 3. Education (15 pts)
-  const edu = sections.education;
+  const edu = sections.education || [];
   let eduQuality = 0;
   let eduFeedback = '';
 
   if (edu.length > 0) {
-    const hasDegree = edu.some((e) => e.degree);
-    const hasYear = edu.some((e) => e.graduationYear);
+    const hasDegree = edu.some((e: any) => e?.degree);
+    const hasYear = edu.some((e: any) => e?.graduationYear);
     eduQuality = hasDegree && hasYear ? 100 : hasDegree || hasYear ? 80 : 60;
     eduFeedback = `${edu.length} education entry(s) detected.`;
   } else {
@@ -108,7 +108,7 @@ export function checkSectionCompleteness(resume: Resume): {
   });
 
   // 4. Skills List (15 pts)
-  const skills = sections.skills;
+  const skills = sections.skills || [];
   let skillsQuality = 0;
   let skillsFeedback = '';
 
@@ -135,7 +135,7 @@ export function checkSectionCompleteness(resume: Resume): {
   });
 
   // 5. Professional Summary (15 pts)
-  const summary = sections.summary;
+  const summary = sections.summary || '';
   let summaryQuality = 0;
   let summaryFeedback = '';
 

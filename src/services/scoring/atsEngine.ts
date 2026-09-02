@@ -1,11 +1,14 @@
 import { JobPosting } from '../../types/job';
 import { Resume } from '../../types/resume';
 import { AtsPresetName, AtsScoreResult, AtsWeights } from '../../types/scoring';
+import { WEAK_VERB_MAP, extractActionVerbRecommendations } from './actionVerbExtractor';
 import { calculateKeywordMatch } from './keywordMatcher';
 import { calculatePlacementScore } from './placementScorer';
 import { checkSectionCompleteness } from './sectionChecker';
 import { evaluateParseSuccess } from './parseSuccessEvaluator';
 import { calculateRelevance } from './relevanceScorer';
+
+export { WEAK_VERB_MAP, extractActionVerbRecommendations };
 
 export const ATS_PRESETS: Record<AtsPresetName, AtsWeights> = {
   standard: {
@@ -100,6 +103,9 @@ export function calculateAtsScore(
   // 5. Relevance Boost (W5: 5-15%)
   const relevanceResult = calculateRelevance(job, resume);
 
+  // 6. Action Verb Recommendations
+  const actionVerbRecommendations = extractActionVerbRecommendations(resume);
+
   // Calculate Weighted Total Score
   const rawTotal =
     (keywordResult.score * activeWeights.keywordMatch +
@@ -111,10 +117,12 @@ export function calculateAtsScore(
 
   const overallScore = Math.min(100, Math.max(0, Math.round(rawTotal)));
 
+  const missingKeywords = keywordResult.items.filter((k) => !k.foundInResume).map((k) => k.keyword);
+  const matchedKeywords = keywordResult.items.filter((k) => k.foundInResume).map((k) => k.keyword);
+
   // Generate actionable recommendations
   const recommendations: string[] = [];
 
-  const missingKeywords = keywordResult.items.filter((k) => !k.foundInResume).map((k) => k.keyword);
   if (missingKeywords.length > 0) {
     const topMissing = missingKeywords.slice(0, 4).join(', ');
     recommendations.push(`Add key missing tools/skills: ${topMissing}.`);
@@ -123,6 +131,12 @@ export function calculateAtsScore(
   if (placementResult.skillsKeywordsCount > 2) {
     recommendations.push(
       `Incorporate ${placementResult.skillsKeywordsCount} skills currently only in your skills list into experience bullet points to boost placement score.`
+    );
+  }
+
+  if (actionVerbRecommendations.length > 0) {
+    recommendations.push(
+      `Upgrade ${actionVerbRecommendations.length} weak bullet verbs (e.g. replace "${actionVerbRecommendations[0].current}" with "${actionVerbRecommendations[0].suggested}") to strengthen impact.`
     );
   }
 
@@ -147,12 +161,21 @@ export function calculateAtsScore(
     sectionScore: sectionResult.score,
     parseScore: parseResult.score,
     relevanceScore: relevanceResult.score,
+    breakdown: {
+      keywordMatch: keywordResult.score,
+      placementScore: placementResult.score,
+      sectionCompleteness: sectionResult.score,
+      parseSuccess: parseResult.score,
+      relevanceScore: relevanceResult.score,
+    },
     keywordDetails: {
       totalKeywords: keywordResult.totalKeywords,
       matchedKeywords: keywordResult.matchedKeywords,
       missingKeywords: keywordResult.missingKeywords,
       items: keywordResult.items,
     },
+    keywordGaps: missingKeywords,
+    matchedKeywords,
     placementDetails: placementResult,
     sectionDetails: {
       items: sectionResult.items,
@@ -163,6 +186,24 @@ export function calculateAtsScore(
     },
     relevanceDetails: relevanceResult,
     recommendations,
+    actionVerbRecommendations,
     calculatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Interface contract function for ATS resume scoring
+ */
+export function scoreResume(
+  job: JobPosting,
+  resume: Resume,
+  weightsOrPreset?: AtsWeights | AtsPresetName
+): AtsScoreResult {
+  if (typeof weightsOrPreset === 'string') {
+    return calculateAtsScore(job, resume, weightsOrPreset);
+  }
+  if (weightsOrPreset) {
+    return calculateAtsScore(job, resume, 'custom', weightsOrPreset);
+  }
+  return calculateAtsScore(job, resume, 'standard');
 }
