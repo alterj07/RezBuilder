@@ -43,6 +43,41 @@ describe('JobClassifier Negative Veto Engine', () => {
     expect(result.negativeSignals.some((s) => s.includes('VETO_URL') || s.includes('VETO_DOM'))).toBe(true);
   });
 
+  it('must strictly veto naked domain URLs on educational and documentation platforms with score 0', () => {
+    const nakedUrls = [
+      'https://algomaster.io/about',
+      'https://devdocs.io/javascript/',
+      'https://coursera.org/specializations/',
+      'https://w3schools.com/tags/',
+      'https://udemy.com/topic/python/',
+      'https://edx.org/masters',
+      'https://freecodecamp.org/news/',
+      'https://leetcode.com/problems/random-problem',
+      'https://pkg.go.dev/net/http',
+      'https://caniuse.com/flexbox',
+    ];
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Documentation & Course Overview</title></head>
+        <body>
+          <h1>Overview</h1>
+          <p>Requirements: 5+ years experience in distributed systems. Apply these principles.</p>
+        </body>
+      </html>
+    `;
+    const doc = parser.parseFromString(html, 'text/html');
+
+    for (const nakedUrl of nakedUrls) {
+      const result = jobClassifier.classify(nakedUrl, doc);
+      expect(result.isJobPage).toBe(false);
+      expect(result.score).toBe(0);
+      expect(result.confidence).toBe('none');
+      expect(result.negativeSignals.length).toBeGreaterThan(0);
+    }
+  });
+
   it('must veto MDN documentation pages', () => {
     const url = 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map';
     const html = `

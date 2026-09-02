@@ -10,7 +10,7 @@ export const NEGATIVE_URL_PATTERNS: { id: string; pattern: RegExp; reason: strin
   // 1. Educational, Course & Learning Platforms
   {
     id: 'VETO_URL_LEARNING_DOMAIN',
-    pattern: /(?:^|\.)(?:algomaster\.io|leetcode\.com\/(?:problems|explore|contest)|coursera\.org|udemy\.com|edx\.org|pluralsight\.com|freecodecamp\.org|codecademy\.com|khanacademy\.org|educative\.io|frontendmentor\.io|hackerrank\.com\/challenges|geeksforgeeks\.org)/i,
+    pattern: /(?:^|[/.])(?:algomaster\.io|leetcode\.com\/(?:problems|explore|contest)|coursera\.org|udemy\.com|edx\.org|pluralsight\.com|freecodecamp\.org|codecademy\.com|khanacademy\.org|educative\.io|frontendmentor\.io|hackerrank\.com\/challenges|geeksforgeeks\.org)/i,
     reason: 'Educational, competitive programming, or course platform domain',
   },
   {
@@ -27,7 +27,7 @@ export const NEGATIVE_URL_PATTERNS: { id: string; pattern: RegExp; reason: strin
   // 2. Documentation, Encyclopedias & Reference
   {
     id: 'VETO_URL_DOCS_DOMAIN',
-    pattern: /(?:^|\.)(?:developer\.mozilla\.org|w3schools\.com|wikipedia\.org|wikimedia\.org|devdocs\.io|readthedocs\.io|gitbook\.io|pkg\.go\.dev|caniuse\.com)/i,
+    pattern: /(?:^|[/.])(?:developer\.mozilla\.org|w3schools\.com|wikipedia\.org|wikimedia\.org|devdocs\.io|readthedocs\.io|gitbook\.io|pkg\.go\.dev|caniuse\.com)/i,
     reason: 'Technical documentation, reference, or encyclopedia domain',
   },
   {
