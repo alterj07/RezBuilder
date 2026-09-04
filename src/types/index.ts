@@ -4,3 +4,5 @@ export * from './scoring';
 export * from './settings';
 export * from './interview';
 export * from './detection';
+export * from './profile';
+export * from './fit';
