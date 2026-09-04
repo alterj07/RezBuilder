@@ -1,13 +1,22 @@
-# RezBuilder — AI Job-Application Copilot (Chrome Extension)
+# RezBuilder — Job-Application Copilot (Chrome Extension)
 
-**RezBuilder** is an intelligent job-application copilot built for Chrome (Manifest V3) that sits right in your browser's Side Panel while you browse job listings. It detects and scrapes job postings in real time, scores your resumes against ATS algorithms using a 5-factor weighted formula, tailors your bullet points deterministically with zero fabrication, and generates interview briefings with exportable cheat sheets.
+**RezBuilder** is a free, local-first job-application copilot for Chrome (Manifest V3). It lives in the Side Panel while you browse: it recognises job postings on any website, tells you how well *you* fit each one, scores and tailors your resume for the ATS, and preps you for the interview. There are no accounts, no servers, and no paid AI — every engine is deterministic and runs in your browser.
 
 > [!NOTE]
-> **100% Local & Offline by Default**: RezBuilder's tailoring, scoring, and interview prep engines run completely in-browser without requiring any external LLM API keys, subscriptions, or outbound data sharing.
+> **100% Local & Free**: profile, resumes, jobs and settings live in `chrome.storage.local`. Nothing is sent anywhere. Optional bring-your-own-key LLM providers exist for resume tailoring but are never required.
 
 ---
 
 ## Key Features
+
+0. **Candidate Profile (required first step)**
+   - Name, education with **graduating class** (still studying or graduated), **skills rated 1–5**, experiences, certifications, and your story (summary, drives, target roles, work preferences, authorization).
+   - Import it three ways: from an uploaded resume, from **your own LinkedIn profile page** (RezBuilder opens `linkedin.com/in/me` and reads it — no LinkedIn API or OAuth, which do not expose skills/experience to third-party apps), or from a **LinkedIn data export** (Profile/Positions/Education/Skills/Certifications CSVs).
+   - Job, Tailor and Prep tabs stay locked until the profile is complete.
+
+0b. **Best Fit %**
+   - A deterministic, explainable estimate of how well your profile matches the open posting: skills (weighted by your ratings), experience, education and graduation window, certifications, story/culture themes, and preferences.
+   - Shows strengths, concrete ways to improve, matched/missing skills, a confidence level, and **hard blockers** (clearance, sponsorship, degree, employment type) that cap the score.
 
 1. **Intelligent Job Detection & In-Page Floating Action Button (FAB)**
    - Specialized DOM scrapers for **LinkedIn**, **Indeed**, **Greenhouse**, and **Lever**, plus an intelligent fallback reader for arbitrary career sites.
@@ -95,6 +104,12 @@ The compiled extension will be generated in the `dist/` directory.
 
 ## User Guide & Workflow
 
+### Step 0: Build Your Candidate Profile
+1. Open the Side Panel. The **Profile** tab opens first until your profile is complete.
+2. Fastest path: click **Import from LinkedIn** (make sure you are signed in to LinkedIn; a tab opens on your profile and is read automatically), or upload a resume in **Resumes** and click **Import from resume**.
+3. Rate each skill 1–5. Higher-rated skills lead your tailored resume and count more in Best Fit %.
+4. Fill in your graduating class, story and preferences, then **Finish**.
+
 ### Step 1: Upload Your Resumes
 1. Click the RezBuilder extension icon to open the **Chrome Side Panel**.
 2. Navigate to the **Resumes** tab.
@@ -105,7 +120,7 @@ The compiled extension will be generated in the `dist/` directory.
 ### Step 2: Browse Job Postings & ATS Match
 1. Browse to any job posting on **LinkedIn**, **Indeed**, **Greenhouse**, or **Lever**.
 2. The floating **RezBuilder Action Button** will appear in the bottom-right corner. Click it to capture the JD into your Side Panel.
-3. Switch to the **Job** tab to review the **5-Factor ATS Score Breakdown**, matched skills, missing keywords, and recommended action steps.
+3. Switch to the **Job** tab. The **Best Fit %** card shows how well your profile matches, with a factor breakdown and blockers; below it the **5-Factor ATS Score** grades the selected resume.
 
 ### Step 3: Tailor Your Resume & Export (Instant Local Engine)
 1. In the **Job** tab, click **Tailor Resume for this Role** (or navigate to the **Tailor** tab).
@@ -121,6 +136,10 @@ The compiled extension will be generated in the `dist/` directory.
 3. Click **Export .MD** to download your interview cheat sheet.
 
 ---
+
+## Roadmap
+
+Phase 2 — automatic applying to new postings that match a saved description (job watch on public ATS board APIs, answer bank, templated cover letters, review-then-submit) — is designed in [`docs/AUTO_APPLY_ROADMAP.md`](docs/AUTO_APPLY_ROADMAP.md) and starts only after Phase 1 meets the entry criteria listed there.
 
 ## Running Automated Tests
 
