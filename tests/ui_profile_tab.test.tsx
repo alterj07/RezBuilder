@@ -292,31 +292,202 @@ describe('ProfileTab — Candidate Profile wizard, editor and imports', () => {
     expect(dom.textContent).toContain('Upload a resume in the Resumes tab first');
   });
 
-  it('imports from LinkedIn via the background and surfaces the skills warning', async () => {
-    const linkedin: ProfileImport = {
-      source: 'linkedin_page',
-      contact: { name: 'Priya Natarajan', linkedinUrl: 'https://www.linkedin.com/in/priya' },
-      experiences: [{ company: 'Campus Labs', title: 'Software Engineering Intern', bullets: ['Built an API'] }],
-      education: [{ institution: 'UT Austin', degreeLevel: 'bachelor', status: 'in_progress', graduationYear: 2027 }],
-      skills: [{ name: 'Python' }, { name: 'Java' }, { name: 'SQL' }, { name: 'React' }],
-      warnings: ['Only 4 skills visible; open /details/skills/ for the full list'],
-    };
-    mockHarness.mockChrome.runtime.sendMessage.mockResolvedValue({ success: true, profile: linkedin, tabId: 1000 });
+  // ---- LinkedIn multi-page import ---------------------------------------------
+
+  const LINKEDIN_IMPORT: ProfileImport = {
+    source: 'linkedin_page',
+    contact: { name: 'Priya Natarajan', linkedinUrl: 'https://www.linkedin.com/in/priya' },
+    experiences: [
+      { company: 'Campus Labs', title: 'Software Engineering Intern', type: 'internship', bullets: ['Built an API'] },
+      { company: 'Acme', title: 'Research Assistant', type: 'research', bullets: [] },
+      { company: 'Beta Corp', title: 'QA Intern', type: 'internship', bullets: [] },
+      { company: '', title: 'Savor', type: 'project', bullets: ['Menu OCR'] },
+      { company: '', title: 'Portfolio', type: 'project', bullets: [] },
+      { company: 'Austin Church', title: 'Care Team Leader', type: 'volunteer', bullets: [] },
+    ],
+    education: [{ institution: 'UT Austin', degreeLevel: 'bachelor', status: 'in_progress', graduationYear: 2027 }],
+    certifications: [{ name: 'Intro to MCP', issuer: 'Anthropic' }, { name: 'AI Fluency', issuer: 'Anthropic' }],
+    skills: [{ name: 'Python' }, { name: 'Java' }, { name: 'SQL' }, { name: 'React' }],
+  };
+
+  const ALL_PAGES_OK = [
+    { kind: 'profile', status: 'ok', count: 2 },
+    { kind: 'experience', status: 'ok', count: 3 },
+    { kind: 'education', status: 'ok', count: 1 },
+    { kind: 'certifications', status: 'ok', count: 2 },
+    { kind: 'projects', status: 'ok', count: 2 },
+    { kind: 'volunteering', status: 'ok', count: 1 },
+    { kind: 'skills', status: 'ok', count: 4 },
+  ];
+
+  const SKILLS_WARNING =
+    'Skills did not load — LinkedIn sometimes throttles this page. Scroll the LinkedIn tab, then use "Retry skills".';
+
+  /** Fires a background LINKEDIN_IMPORT_PROGRESS broadcast at every runtime.onMessage listener. */
+  const broadcastProgress = async (step: number, label: string, kind: string) => {
+    await act(async () => {
+      for (const listener of [...mockHarness.messageListeners]) {
+        listener({ type: 'LINKEDIN_IMPORT_PROGRESS', step, total: 7, label, kind }, { id: 'rezbuilder' }, () => {});
+      }
+    });
+    await flush();
+  };
+
+  it('imports from LinkedIn via the background and shows the per-page summary', async () => {
+    mockHarness.mockChrome.runtime.sendMessage.mockResolvedValue({
+      success: true,
+      profile: { ...LINKEDIN_IMPORT, story: { summary: 'I build things.' } },
+      tabId: 1000,
+      pages: ALL_PAGES_OK,
+    });
 
     const { dom, onProfileSaved } = await renderTab(null);
     await click(q('import-linkedin'));
 
     expect(mockHarness.mockChrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'IMPORT_LINKEDIN_PROFILE' });
-    expect(q('import-status-message').textContent).toBe('Imported 1 experience, 1 school, 4 skills.');
-    expect(dom.textContent).toContain('Only 4 skills visible');
+    expect(q('import-status-message').textContent).toBe('Imported 6 experiences, 1 school, 4 skills, 2 certifications.');
+    expect(q('import-page-summary').textContent).toBe(
+      'Experience: 3 · Education: 1 · Certifications: 2 · Projects: 2 · Volunteering: 1 · Skills: 4'
+    );
+    expect(dom.querySelector('[data-testid="import-warnings"]')).toBeNull();
+    expect(dom.querySelector('[data-testid^="import-retry-"]')).toBeNull();
+    expect(dom.querySelector('[data-testid="import-about-hint"]')).toBeNull();
     expect(stored().contact.name).toBe('Priya Natarajan');
     expect(stored().skills.length).toBe(4);
+    expect(stored().certifications.length).toBe(2);
+    expect(stored().story.summary).toBe('I build things.');
     expect(stored().sources[0].kind).toBe('linkedin_page');
     expect(onProfileSaved).toHaveBeenCalled();
+    // The wizard stays put with the imported data loaded into its forms.
+    expect(dom.querySelector('[data-testid="profile-wizard"]')).not.toBeNull();
+    expect(q<HTMLInputElement>('basics-name').value).toBe('Priya Natarajan');
+  });
 
-    await click(q('open-linkedin-skills'));
-    expect(mockHarness.mockChrome.tabs.create).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://www.linkedin.com/in/me/details/skills/' })
+  it('shows live progress from LINKEDIN_IMPORT_PROGRESS broadcasts and can cancel', async () => {
+    let finish: (result: unknown) => void = () => {};
+    mockHarness.mockChrome.runtime.sendMessage.mockImplementation(async (message: any) => {
+      if (message.type === 'IMPORT_LINKEDIN_PROFILE') return new Promise((resolve) => (finish = resolve));
+      return { success: true, cancelled: true };
+    });
+
+    const { dom } = await renderTab(null);
+    await click(q('import-linkedin'));
+    expect(q<HTMLButtonElement>('import-linkedin').disabled).toBe(true);
+    expect(dom.querySelector('[data-testid="import-progress"]')).toBeNull();
+
+    await broadcastProgress(1, 'Profile', 'profile');
+    expect(q('import-progress').textContent).toBe('Reading profile… (1/7)');
+    await broadcastProgress(2, 'Experience', 'experience');
+    expect(q('import-progress').textContent).toBe('Reading experience… (2/7)');
+
+    await click(q('import-cancel'));
+    expect(mockHarness.mockChrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'CANCEL_LINKEDIN_IMPORT' });
+    expect(dom.querySelector('[data-testid="import-cancel"]')).toBeNull();
+    expect(q('import-status').textContent).toContain('Cancelling');
+
+    await act(async () => {
+      finish({
+        success: true,
+        cancelled: true,
+        tabId: 1000,
+        profile: { source: 'linkedin_page', contact: { name: 'Priya Natarajan' }, experiences: LINKEDIN_IMPORT.experiences!.slice(0, 3), warnings: ['Import cancelled; the pages read so far were kept.'] },
+        pages: ALL_PAGES_OK.slice(0, 2),
+      });
+    });
+    await flush();
+
+    expect(q('import-status-message').textContent).toBe('Imported 3 experiences, 0 schools, 0 skills. (cancelled early)');
+    expect(q('import-page-summary').textContent).toBe('Experience: 3');
+    expect(q('import-warnings').textContent).toContain('Import cancelled');
+    expect(stored().experiences.length).toBe(3);
+    expect(q<HTMLButtonElement>('import-linkedin').disabled).toBe(false);
+  });
+
+  it('offers a retry for a section that did not load and merges the re-read section', async () => {
+    const withoutSkills: ProfileImport = { ...LINKEDIN_IMPORT, skills: undefined, warnings: [SKILLS_WARNING] };
+    mockHarness.mockChrome.runtime.sendMessage.mockImplementation(async (message: any) => {
+      if (message.type === 'IMPORT_LINKEDIN_PROFILE') {
+        return {
+          success: true,
+          profile: withoutSkills,
+          tabId: 1000,
+          pages: [...ALL_PAGES_OK.slice(0, 6), { kind: 'skills', status: 'empty', count: 0 }],
+        };
+      }
+      if (message.type === 'IMPORT_LINKEDIN_SECTION') {
+        return {
+          success: true,
+          tabId: 1000,
+          profile: { source: 'linkedin_page', skills: [{ name: 'Python' }, { name: 'Go' }, { name: 'SQL' }] },
+          pages: [{ kind: 'skills', status: 'ok', count: 3 }],
+        };
+      }
+      return { success: true };
+    });
+
+    const { dom } = await renderTab(null);
+    await click(q('import-linkedin'));
+
+    expect(q('import-page-summary').textContent).toBe(
+      'Experience: 3 · Education: 1 · Certifications: 2 · Projects: 2 · Volunteering: 1 · Skills: not loaded'
+    );
+    expect(q('import-warnings').textContent).toContain(SKILLS_WARNING);
+    expect(q('import-retry-skills').textContent).toContain('Retry skills');
+    expect(dom.querySelector('[data-testid="import-retry-experience"]')).toBeNull();
+    expect(stored().skills).toEqual([]);
+
+    await click(q('import-retry-skills'));
+
+    expect(mockHarness.mockChrome.runtime.sendMessage).toHaveBeenLastCalledWith({
+      type: 'IMPORT_LINKEDIN_SECTION',
+      kind: 'skills',
+      tabId: 1000,
+      knownContextNames: expect.arrayContaining(['Intro to MCP', 'UT Austin', 'Campus Labs', 'Savor']),
+    });
+    expect(stored().skills.map((s) => s.name)).toEqual(['Python', 'Go', 'SQL']);
+    expect(q('import-status-message').textContent).toBe('Imported 0 experiences, 0 schools, 3 skills.');
+    expect(q('import-page-summary').textContent).toBe(
+      'Experience: 3 · Education: 1 · Certifications: 2 · Projects: 2 · Volunteering: 1 · Skills: 3'
+    );
+    expect(dom.querySelector('[data-testid="import-retry-skills"]')).toBeNull();
+    expect(dom.querySelector('[data-testid="import-warnings"]')).toBeNull();
+  });
+
+  it('keeps the retry button and shows the error when a section retry fails', async () => {
+    mockHarness.mockChrome.runtime.sendMessage.mockImplementation(async (message: any) => {
+      if (message.type === 'IMPORT_LINKEDIN_PROFILE') {
+        return {
+          success: true,
+          profile: { ...LINKEDIN_IMPORT, skills: undefined, warnings: [SKILLS_WARNING] },
+          tabId: 1000,
+          pages: [...ALL_PAGES_OK.slice(0, 6), { kind: 'skills', status: 'error', count: 0 }],
+        };
+      }
+      return { success: false, error: SKILLS_WARNING, tabId: 1000, pages: [{ kind: 'skills', status: 'empty', count: 0 }] };
+    });
+
+    await renderTab(null);
+    await click(q('import-linkedin'));
+    expect(q('import-page-summary').textContent).toContain('Skills: failed');
+
+    await click(q('import-retry-skills'));
+    expect(q('import-status-message').textContent).toBe(SKILLS_WARNING);
+    expect(q('import-page-summary').textContent).toContain('Skills: not loaded');
+    q('import-retry-skills');
+  });
+
+  it('hints about the About section when the import brings no summary', async () => {
+    mockHarness.mockChrome.runtime.sendMessage.mockResolvedValue({
+      success: true,
+      profile: { ...LINKEDIN_IMPORT, story: { summary: '' } },
+      tabId: 1000,
+      pages: ALL_PAGES_OK,
+    });
+
+    await renderTab(null);
+    await click(q('import-linkedin'));
+    expect(q('import-about-hint').textContent).toBe(
+      'LinkedIn only loads your About section when you scroll your profile; you can paste it into the Story step.'
     );
   });
 
@@ -324,12 +495,30 @@ describe('ProfileTab — Candidate Profile wizard, editor and imports', () => {
     mockHarness.mockChrome.runtime.sendMessage.mockResolvedValue({
       success: false,
       error: 'Please sign in to LinkedIn, then try again.',
+      tabId: 1000,
+      pages: [{ kind: 'profile', status: 'error', count: 0 }],
     });
     const { dom, onProfileSaved } = await renderTab(null);
     await click(q('import-linkedin'));
     expect(q('import-status-message').textContent).toBe('Please sign in to LinkedIn, then try again.');
+    expect(dom.querySelector('[data-testid="import-page-summary"]')).toBeNull();
     expect(dom.querySelector('[data-testid="profile-wizard"]')).not.toBeNull();
     expect(onProfileSaved).not.toHaveBeenCalled();
+  });
+
+  it('registers the progress listener on mount and removes it on unmount', async () => {
+    await renderTab(null);
+    const addCalls = mockHarness.mockChrome.runtime.onMessage.addListener.mock.calls;
+    expect(addCalls.length).toBeGreaterThan(0);
+    const listener = addCalls[addCalls.length - 1][0];
+    expect(mockHarness.messageListeners).toContain(listener);
+
+    await act(async () => {
+      root?.unmount();
+    });
+    root = null;
+    expect(mockHarness.mockChrome.runtime.onMessage.removeListener).toHaveBeenCalledWith(listener);
+    expect(mockHarness.messageListeners).not.toContain(listener);
   });
 
   it('guards the LinkedIn import when chrome APIs are unavailable', async () => {

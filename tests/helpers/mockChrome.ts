@@ -26,6 +26,8 @@ export interface SetupMockChromeResult {
   sendFromTab: (tabId: number, message: any) => Promise<any>;
   /** Tabs opened through `chrome.tabs.create`, in creation order. */
   createdTabs: MockTab[];
+  /** Every `chrome.tabs.update(tabId, { url })` call, in order. */
+  updatedTabs: { tabId: number; url?: string; active?: boolean }[];
 }
 
 export interface MockTab {
@@ -52,6 +54,7 @@ export function setupMockChrome(): SetupMockChromeResult {
   const nonScriptableTabs = new Set<number>();
   // Tabs opened via chrome.tabs.create get ids well above the hand-picked ids tests use.
   const createdTabs: MockTab[] = [];
+  const updatedTabs: { tabId: number; url?: string; active?: boolean }[] = [];
   let nextCreatedTabId = 1000;
   const findCreatedTab = (tabId: number) => createdTabs.find((t) => t.id === tabId);
   const tabActivatedListeners: ((info: { tabId: number; windowId: number }) => any)[] = [];
@@ -241,13 +244,39 @@ export function setupMockChrome(): SetupMockChromeResult {
         if (tabId === activeTabId) return { id: activeTabId, url: activeTabUrl, windowId: 100, active: true, status: 'complete' };
         throw new Error(`No tab with id: ${tabId}.`);
       }),
+      // Navigating a tab: created tabs go back to `loading` until a test fires
+      // `updateTab(tabId, { status: 'complete' })`; the active hand-picked tab just changes url.
+      update: vi.fn(async (tabId: number, updateProperties: { url?: string; active?: boolean } = {}) => {
+        updatedTabs.push({ tabId, ...updateProperties });
+        const created = findCreatedTab(tabId);
+        if (created) {
+          if (updateProperties.url) {
+            created.url = updateProperties.url;
+            created.pendingUrl = updateProperties.url;
+            created.status = 'loading';
+          }
+          if (updateProperties.active !== undefined) created.active = updateProperties.active;
+          if (created.active) {
+            activeTabId = created.id;
+            if (created.url) activeTabUrl = created.url;
+          }
+          return { ...created };
+        }
+        if (tabId === activeTabId) {
+          if (updateProperties.url) activeTabUrl = updateProperties.url;
+          return { id: activeTabId, url: activeTabUrl, windowId: 100, active: true, status: 'loading' };
+        }
+        throw new Error(`No tab with id: ${tabId}.`);
+      }),
       sendMessage: vi.fn(async (tabId: number, msg: any) => {
         if (nonScriptableTabs.has(tabId)) {
           throw new Error('Could not establish connection. Receiving end does not exist.');
         }
+        const created = findCreatedTab(tabId);
+        const senderUrl = created?.url || activeTabUrl;
         let asyncResponseReceived: any = null;
         for (const listener of messageListeners) {
-          listener(msg, { id: 'rezbuilder-sender', tab: { id: tabId, url: activeTabUrl } }, (response: any) => {
+          listener(msg, { id: 'rezbuilder-sender', tab: { id: tabId, url: senderUrl } }, (response: any) => {
             asyncResponseReceived = response;
           });
         }
@@ -309,6 +338,7 @@ export function setupMockChrome(): SetupMockChromeResult {
     installedListeners.length = 0;
     nonScriptableTabs.clear();
     createdTabs.length = 0;
+    updatedTabs.length = 0;
     nextCreatedTabId = 1000;
     activeTabId = 1;
   };
@@ -375,5 +405,6 @@ export function setupMockChrome(): SetupMockChromeResult {
     removeTab,
     sendFromTab,
     createdTabs,
+    updatedTabs,
   };
 }
