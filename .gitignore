@@ -23,3 +23,4 @@ agent orchestration scratch
 
 # Local Claude Code guidance
 CLAUDE.md
+.claude/skills/
