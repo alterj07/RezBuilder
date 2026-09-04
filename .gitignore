@@ -20,3 +20,6 @@ yarn-error.log*
 Thumbs.db
 agent orchestration scratch
 .agents/
+
+# Local Claude Code guidance
+CLAUDE.md
