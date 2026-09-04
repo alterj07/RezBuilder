@@ -8,7 +8,7 @@ import {
   appendJobHistory,
 } from '../services/storage/tabJobStore';
 import { JobPosting } from '../types/job';
-import { handleLinkedInImportMessage } from './linkedinImport';
+import { handleLinkedInImportMessage, isLinkedInImportMessage } from './linkedinImport';
 
 /** Resolves the tab the user is currently looking at, if any. */
 async function getActiveTabId(): Promise<number | null> {
@@ -117,9 +117,12 @@ if (chrome.windows?.onFocusChanged) {
 
 // Message router between Content Scripts and Side Panel
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Side panel asking to import the user's own LinkedIn profile.
-  // IMPORT_LINKEDIN_PROFILE -> { success: boolean, profile?: ProfileImport, error?: string, tabId?: number }
-  if (message.type === 'IMPORT_LINKEDIN_PROFILE') {
+  // Side panel driving the LinkedIn own-profile import.
+  // IMPORT_LINKEDIN_PROFILE -> LinkedInImportResult { success, profile?, error?, tabId?, pages, cancelled? }
+  // IMPORT_LINKEDIN_SECTION { kind, tabId?, slug?, knownContextNames? } -> LinkedInImportResult
+  // CANCEL_LINKEDIN_IMPORT -> { success: true, cancelled: boolean }
+  // (progress is broadcast as LINKEDIN_IMPORT_PROGRESS { step, total, label, kind })
+  if (isLinkedInImportMessage(message)) {
     return handleLinkedInImportMessage(message, sendResponse);
   }
 
