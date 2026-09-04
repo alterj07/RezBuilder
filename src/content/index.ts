@@ -3,7 +3,10 @@ import { scraperRegistry } from './scrapers/scraperRegistry';
 import { FloatingButton } from './floatingButton';
 import { formFiller } from './autofill/formFiller';
 import { JobPosting } from '../types/job';
-import { isLinkedInProfileUrl, scrapeLinkedInProfile } from './linkedinProfile/linkedinProfileScraper';
+import { LinkedInPageKind, RenderedSection, scrapeLinkedInPage } from './linkedinProfile/linkedinProfileScraper';
+import { detectLinkedInPageKind } from './linkedinProfile/pageKind';
+import { settleLinkedInPage } from './linkedinProfile/settle';
+import { ProfileImport } from '../types/profile';
 
 let floatingBtn: FloatingButton | null = null;
 let lastUrl = typeof window !== 'undefined' ? window.location.href : '';
@@ -107,6 +110,53 @@ export function evaluatePageForJob(): boolean {
   return isJob;
 }
 
+export interface LinkedInScrapeOptions {
+  /** Names that are context lines on the Skills page (certification/education/project names). */
+  knownContextNames?: string[];
+  /** Wait for lazy rendering, scroll and expand before scraping. Default true. */
+  settle?: boolean;
+  /** Settle budget in ms (default 8000). */
+  timeoutMs?: number;
+}
+
+export interface LinkedInScrapeResponse {
+  success: boolean;
+  profile?: ProfileImport;
+  error?: string;
+  page: LinkedInPageKind;
+  rendered: RenderedSection[];
+}
+
+export const LINKEDIN_NOT_PROFILE_ERROR = 'This tab is not a LinkedIn profile page.';
+/** Exact string the background worker polls on. */
+export const LINKEDIN_NOT_RENDERED_ERROR = 'LinkedIn profile has not finished rendering yet.';
+
+/**
+ * Handles SCRAPE_LINKEDIN_PROFILE: settles the page (unless `options.settle`
+ * is false), scrapes it and reports which sections rendered. Never rejects
+ * with a scraper error; only the URL and rendering checks fail.
+ */
+export async function handleLinkedInProfileScrape(
+  message: { options?: LinkedInScrapeOptions } = {}
+): Promise<LinkedInScrapeResponse> {
+  const currentUrl = window.location.href;
+  const page = detectLinkedInPageKind(currentUrl);
+  if (page === 'unknown') {
+    return { success: false, error: LINKEDIN_NOT_PROFILE_ERROR, page, rendered: [] };
+  }
+  const options = message?.options || {};
+  if (options.settle !== false) {
+    await settleLinkedInPage(document, page, { timeoutMs: options.timeoutMs });
+  }
+  const { profile, rendered } = scrapeLinkedInPage(document, window.location.href, {
+    knownContextNames: options.knownContextNames,
+  });
+  if (rendered.length === 0) {
+    return { success: false, error: LINKEDIN_NOT_RENDERED_ERROR, page, rendered };
+  }
+  return { success: true, profile, page, rendered };
+}
+
 /** Resets memoized reporting state. Exposed for tests. */
 export function resetReportCache(): void {
   lastReportedKey = null;
@@ -172,29 +222,20 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       return true;
     }
 
-    // Contract 4: SCRAPE_LINKEDIN_PROFILE -> { success: boolean, profile?: ProfileImport, error?: string }
-    // Reads the signed-in user's own profile page (opened by the background
-    // worker at linkedin.com/in/me/) into a partial Candidate Profile.
+    // Contract 4: SCRAPE_LINKEDIN_PROFILE -> LinkedInScrapeResponse (async).
+    // Reads the signed-in user's own profile page or one of its /details/*
+    // pages (opened by the background worker) into a partial Candidate Profile.
     if (message.type === 'SCRAPE_LINKEDIN_PROFILE') {
-      const currentUrl = window.location.href;
-      if (!isLinkedInProfileUrl(currentUrl)) {
-        sendResponse({ success: false, error: 'This tab is not a LinkedIn profile page.' });
-        return true;
-      }
-      const profile = scrapeLinkedInProfile(document, currentUrl);
-      // LinkedIn renders sections lazily; report "not ready" until something is
-      // there so the background worker can poll (details pages carry no name).
-      const hasData =
-        !!profile.contact?.name ||
-        !!profile.experiences?.length ||
-        !!profile.education?.length ||
-        !!profile.skills?.length ||
-        !!profile.certifications?.length;
-      if (!hasData) {
-        sendResponse({ success: false, error: 'LinkedIn profile has not finished rendering yet.' });
-        return true;
-      }
-      sendResponse({ success: true, profile });
+      handleLinkedInProfileScrape(message)
+        .then((response) => sendResponse(response))
+        .catch((err) =>
+          sendResponse({
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+            page: detectLinkedInPageKind(window.location.href),
+            rendered: [],
+          })
+        );
       return true;
     }
 
