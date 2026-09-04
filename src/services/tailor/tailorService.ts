@@ -1,6 +1,7 @@
 import { JobPosting } from '../../types/job';
 import { Resume, ResumeSections, TailoredResume, TailoredBulletDiff } from '../../types/resume';
 import { AIProviderType, UserSettings } from '../../types/settings';
+import { UserProfile } from '../../types/profile';
 import { AIFactory, getStoredSettings } from '../ai/aiFactory';
 import { TAILOR_RESUME_SYSTEM_PROMPT, buildTailorResumePrompt } from '../../prompts/tailorResume';
 import { tailorResumeLocally } from './localTailorEngine';
@@ -24,6 +25,8 @@ export interface TailorOptions {
   provider?: AIProviderType;
   apiKey?: string;
   model?: string;
+  /** Candidate profile; its 1-5 skill ratings steer the local engine's ordering. */
+  profile?: UserProfile | null;
 }
 
 /**
@@ -165,12 +168,12 @@ export class TailorService {
         console.warn(
           `[TailorService] AI tailoring failed (${err?.message || 'unknown error'}), falling back to local heuristic engine.`
         );
-        return this.executeLocalFallback(job, resume, beforeScore, err?.message || 'AI provider error');
+        return this.executeLocalFallback(job, resume, beforeScore, err?.message || 'AI provider error', options?.profile);
       }
     }
 
     // No API key provided: seamless local heuristic tailoring
-    return this.executeLocalFallback(job, resume, beforeScore, 'No API key configured. Using local deterministic heuristic.');
+    return this.executeLocalFallback(job, resume, beforeScore, 'No API key configured. Using local deterministic heuristic.', options?.profile);
   }
 
   /**
@@ -188,9 +191,10 @@ export class TailorService {
     job: JobPosting,
     resume: Resume,
     beforeScore: number,
-    reason: string
+    reason: string,
+    profile?: UserProfile | null
   ): TailoredResumeResult {
-    const localTailored = tailorResumeLocally(job, resume);
+    const localTailored = tailorResumeLocally(job, resume, { profile });
 
     const tempResume: Resume = {
       ...resume,

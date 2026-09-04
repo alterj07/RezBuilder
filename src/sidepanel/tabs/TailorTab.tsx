@@ -20,6 +20,7 @@ import { printResumeToPdf } from '../../services/export/pdfExporter';
 import { tailorService, TailoredResumeResult } from '../../services/tailor/tailorService';
 import { getStoredSettings } from '../../services/ai/aiFactory';
 import { UserSettings } from '../../types/settings';
+import { UserProfile } from '../../types/profile';
 
 interface TailorTabProps {
   job: JobPosting | null;
@@ -28,6 +29,8 @@ interface TailorTabProps {
   onSelectResume: (id: string) => void;
   tailoredResume: TailoredResume | null;
   onSaveTailoredResume: (tailored: TailoredResume) => void;
+  /** Candidate profile; its skill ratings steer the local tailoring order. */
+  profile?: UserProfile | null;
 }
 
 export const TailorTab: React.FC<TailorTabProps> = ({
@@ -37,6 +40,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
   onSelectResume,
   tailoredResume,
   onSaveTailoredResume,
+  profile = null,
 }) => {
   const [isTailoring, setIsTailoring] = useState(false);
   const [tailorError, setTailorError] = useState<string | null>(null);
@@ -69,6 +73,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
         provider: settings.aiProvider,
         apiKey,
         model,
+        profile,
       });
 
       setTailorResult(result);

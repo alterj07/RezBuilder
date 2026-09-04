@@ -1,4 +1,5 @@
 import { JobPosting } from '../../types/job';
+import { UserProfile } from '../../types/profile';
 import { Resume, ResumeSections, TailoredResume, TailoredBulletDiff, ExperienceItem } from '../../types/resume';
 import { extractSkillsFromText } from '../../content/scrapers/keywordExtractor';
 import { calculateTenureYearsFromResume } from '../scoring/relevanceScorer';
@@ -65,16 +66,59 @@ export const SKILL_CASING_MAP: Record<string, string> = {
   'jest': 'Jest',
 };
 
+export interface LocalTailorOptions {
+  /**
+   * When provided, the candidate's 1-5 skill ratings shape the output: bullets
+   * that mention highly rated skills rank higher, and the skills section is
+   * ordered by confidence so the resume leads with what the user is best at.
+   */
+  profile?: UserProfile | null;
+}
+
+type RatingMap = Record<string, number>;
+
+const NEUTRAL_RATING = 3;
+
+/** Lowercased skill name → rating, including canonical casing-map aliases. */
+function buildRatingMap(profile?: UserProfile | null): RatingMap {
+  const map: RatingMap = {};
+  for (const skill of profile?.skills || []) {
+    const name = (skill.name || '').trim().toLowerCase();
+    if (!name) continue;
+    map[name] = skill.rating;
+    const canonical = SKILL_CASING_MAP[name];
+    if (canonical) map[canonical.toLowerCase()] = skill.rating;
+  }
+  return map;
+}
+
+function ratingFor(skill: string, ratings: RatingMap): number {
+  const lower = skill.toLowerCase();
+  if (ratings[lower] !== undefined) return ratings[lower];
+  const canonical = SKILL_CASING_MAP[lower];
+  if (canonical && ratings[canonical.toLowerCase()] !== undefined) return ratings[canonical.toLowerCase()];
+  return NEUTRAL_RATING;
+}
+
+/** Stable sort by rating descending; unrated skills keep neutral weight. */
+function sortByRating<T>(items: T[], key: (item: T) => string, ratings: RatingMap): T[] {
+  return items
+    .map((item, index) => ({ item, index, rating: ratingFor(key(item), ratings) }))
+    .sort((a, b) => b.rating - a.rating || a.index - b.index)
+    .map((entry) => entry.item);
+}
+
 /**
  * Calculates keyword relevance score for a single bullet point
  */
-function scoreBulletRelevance(bullet: string, jdSkills: string[]): number {
+function scoreBulletRelevance(bullet: string, jdSkills: string[], ratings: RatingMap = {}): number {
   let score = 0;
   const bulletLower = bullet.toLowerCase();
 
   for (const skill of jdSkills) {
     if (bulletLower.includes(skill.toLowerCase())) {
-      score += 10;
+      // A 5-rated skill counts ~1.7x a neutral one; a 1-rated skill ~0.3x.
+      score += 10 * (ratingFor(skill, ratings) / NEUTRAL_RATING);
     }
   }
 
@@ -147,13 +191,18 @@ function tailorSummary(
   originalSummary: string,
   job: JobPosting,
   candidateSkills: string[],
-  experienceYears: number
+  experienceYears: number,
+  ratings: RatingMap = {}
 ): string {
   const matchingSkills = (job.requiredSkills || []).filter((s) =>
     candidateSkills.some((cs) => cs.toLowerCase() === s.toLowerCase())
   );
 
-  const topSkillsFormatted = (matchingSkills.length > 0 ? matchingSkills : candidateSkills)
+  const topSkillsFormatted = sortByRating(
+    matchingSkills.length > 0 ? matchingSkills : candidateSkills,
+    (skill) => skill,
+    ratings
+  )
     .slice(0, 4)
     .map((s) => SKILL_CASING_MAP[s.toLowerCase()] || s)
     .join(', ');
@@ -175,7 +224,13 @@ function tailorSummary(
 /**
  * Deterministic local ATS tailoring engine: 100% offline, zero API keys, zero hallucination
  */
-export function tailorResumeLocally(job: JobPosting, resume: Resume): TailoredResume {
+export function tailorResumeLocally(
+  job: JobPosting,
+  resume: Resume,
+  options: LocalTailorOptions = {}
+): TailoredResume {
+  const ratings = buildRatingMap(options.profile);
+  const hasRatings = Object.keys(ratings).length > 0;
   const jdSkills = Array.from(
     new Set([
       ...(job.requiredSkills || []).map((s) => s.toLowerCase()),
@@ -193,7 +248,8 @@ export function tailorResumeLocally(job: JobPosting, resume: Resume): TailoredRe
     resume.sections?.summary || '',
     job,
     candidateSkills,
-    candidateYears
+    candidateYears,
+    ratings
   );
   changesSummary.push(`Aligned professional summary with target title (${job.title || 'Target Role'}) and core skills.`);
 
@@ -202,7 +258,7 @@ export function tailorResumeLocally(job: JobPosting, resume: Resume): TailoredRe
   const tailoredExperience: ExperienceItem[] = (resume.sections?.experience || []).map((exp) => {
     const scoredBullets = (exp.bullets || []).map((b) => {
       const { optimized, diff } = optimizeBullet(b, jdSkills);
-      const score = scoreBulletRelevance(optimized, jdSkills);
+      const score = scoreBulletRelevance(optimized, jdSkills, ratings);
       if (diff) totalOptimizedBullets++;
       return { bullet: optimized, score, diff };
     });
@@ -246,9 +302,17 @@ export function tailorResumeLocally(job: JobPosting, resume: Resume): TailoredRe
     }
   }
 
-  const prioritizedSkills = Array.from(new Set([...matchedSkills, ...otherSkills]));
+  const prioritizedSkills = Array.from(
+    new Set([
+      ...sortByRating(matchedSkills, (skill) => skill, ratings),
+      ...sortByRating(otherSkills, (skill) => skill, ratings),
+    ])
+  );
   if (matchedSkills.length > 0) {
     changesSummary.push(`Promoted ${matchedSkills.length} job-matching skills to the front of your technical skills list.`);
+  }
+  if (hasRatings) {
+    changesSummary.push('Ordered skills and bullet points by your confidence ratings so your strongest skills lead.');
   }
 
   // 4. Identify Unresolved Skill Gaps Honestly
