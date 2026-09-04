@@ -20,16 +20,16 @@ export const sectionTitleClass = 'text-[10px] font-mono uppercase text-surface-5
 export const cardClass = 'p-3 rounded-xl border border-surface-800 bg-surface-900/50 space-y-2.5';
 
 export const primaryButtonClass =
-  'px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold shadow-md shadow-brand-500/20 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand-500';
+  'px-3 py-1.5 rounded-md bg-brand-600 hover:bg-brand-500 active:scale-[0.98] text-white text-xs font-semibold flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand-600 disabled:active:scale-100';
 
 export const secondaryButtonClass =
-  'px-3 py-1.5 rounded-lg border border-surface-800 bg-surface-950 text-surface-300 hover:text-white hover:border-surface-700 text-xs font-medium flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed';
+  'px-3 py-1.5 rounded-md border border-surface-800 bg-surface-950 text-surface-300 hover:text-white hover:border-surface-700 active:scale-[0.98] text-xs font-medium flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100';
 
 export const ghostButtonClass =
-  'px-2 py-1 rounded-lg text-[11px] text-surface-400 hover:text-white hover:bg-surface-800 flex items-center gap-1 transition-colors';
+  'px-2 py-1 rounded-md text-[11px] text-surface-400 hover:text-white hover:bg-surface-800 flex items-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface-500 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-950';
 
 export const dangerButtonClass =
-  'px-3 py-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-xs font-medium flex items-center gap-1.5 disabled:opacity-40';
+  'px-3 py-1.5 rounded-md border border-rose-700/50 bg-rose-900/30 text-rose-300 hover:bg-rose-900/50 active:scale-[0.98] text-xs font-medium flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950 disabled:opacity-40 disabled:active:scale-100';
 
 export const errorTextClass = 'text-[11px] text-rose-300 flex items-center gap-1';
 
