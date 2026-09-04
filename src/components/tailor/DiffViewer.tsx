@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { diffWords } from 'diff';
-import { Columns2, AlignLeft, Sparkles, Check, ChevronRight } from 'lucide-react';
+import { AlignLeft, CaretRight, Check, Columns, Sparkle } from '@phosphor-icons/react';
 import { TailoredBulletDiff } from '../../types/resume';
 
 interface DiffViewerProps {
@@ -27,7 +27,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
       {/* Diff Header */}
       <div className="px-4 py-2.5 bg-surface-850/80 border-b border-surface-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+          <Sparkle className="w-3.5 h-3.5 text-brand-400" />
           <h4 className="text-xs font-semibold text-white tracking-tight">{title}</h4>
         </div>
         <div className="flex items-center gap-1 bg-surface-950/80 p-0.5 rounded-lg border border-surface-800">
@@ -52,7 +52,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
             }`}
             title="Side-by-side Split Diff"
           >
-            <Columns2 className="w-3.5 h-3.5" />
+            <Columns className="w-3.5 h-3.5" />
             <span>Split</span>
           </button>
         </div>
@@ -61,7 +61,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
       {/* Rationale / Changes Callout */}
       {rationale && (
         <div className="px-4 py-2 bg-brand-500/5 border-b border-surface-800/80 text-[11px] text-brand-300 flex items-start gap-1.5">
-          <ChevronRight className="w-3.5 h-3.5 text-brand-400 shrink-0 mt-0.5" />
+          <CaretRight className="w-3.5 h-3.5 text-brand-400 shrink-0 mt-0.5" />
           <span>{rationale}</span>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, X, Info } from 'lucide-react';
+import { Info, Plus, X } from '@phosphor-icons/react';
 import { ProfileSkill, SkillRating as SkillRatingValue } from '../../types/profile';
 import { SKILL_DICTIONARY } from '../../content/scrapers/keywordExtractor';
 import { createProfileEntityId, PROFILE_MIN_SKILLS } from '../../services/profile';
@@ -132,7 +132,7 @@ export const SkillPicker: React.FC<SkillPickerProps> = ({
           <ul
             role="listbox"
             data-testid="skill-suggestions"
-            className="absolute z-20 mt-1 w-full max-h-40 overflow-y-auto rounded-lg border border-surface-800 bg-surface-900 shadow-xl"
+            className="absolute z-20 mt-1 w-full max-h-40 overflow-y-auto rounded-lg border border-surface-800 bg-surface-900 shadow-[0_10px_28px_rgba(0,0,0,0.22)]"
           >
             {suggestions.map((name, idx) => (
               <li key={name} role="option" aria-selected={idx === highlight}>

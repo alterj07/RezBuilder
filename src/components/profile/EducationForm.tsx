@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, GraduationCap, AlertCircle } from 'lucide-react';
+import { GraduationCap, Plus, Trash, WarningCircle } from '@phosphor-icons/react';
 import { DegreeLevel, EducationStatus, ProfileEducation } from '../../types/profile';
 import { createProfileEntityId } from '../../services/profile';
 import {
@@ -80,7 +80,7 @@ export const EducationForm: React.FC<EducationFormProps> = ({ entries, onChange,
                 onClick={() => remove(entry.id)}
                 className="p-1 rounded text-surface-500 hover:text-rose-400 hover:bg-rose-500/10"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -99,7 +99,7 @@ export const EducationForm: React.FC<EducationFormProps> = ({ entries, onChange,
               />
               {errors.institution && (
                 <p className={`${errorTextClass} mt-1`}>
-                  <AlertCircle className="w-3 h-3" />
+                  <WarningCircle className="w-3 h-3" />
                   {errors.institution}
                 </p>
               )}
@@ -233,7 +233,7 @@ export const EducationForm: React.FC<EducationFormProps> = ({ entries, onChange,
             </div>
             {errors.graduationYear && (
               <p className={errorTextClass} data-testid={`education-year-error-${idx}`}>
-                <AlertCircle className="w-3 h-3" />
+                <WarningCircle className="w-3 h-3" />
                 {errors.graduationYear}
               </p>
             )}

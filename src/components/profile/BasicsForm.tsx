@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import { WarningCircle } from '@phosphor-icons/react';
 import { ProfileContact } from '../../types/profile';
 import { inputClass, inputErrorClass, labelClass, errorTextClass } from './fieldStyles';
 
@@ -47,7 +47,7 @@ export const BasicsForm: React.FC<BasicsFormProps> = ({ contact, onChange, showV
             />
             {invalid && (
               <p className={`${errorTextClass} mt-1`} data-testid="basics-name-error">
-                <AlertCircle className="w-3 h-3" />
+                <WarningCircle className="w-3 h-3" />
                 <span>Add your name</span>
               </p>
             )}

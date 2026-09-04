@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, Award } from 'lucide-react';
+import { Medal, Plus, Trash } from '@phosphor-icons/react';
 import { ProfileCertification } from '../../types/profile';
 import { createProfileEntityId } from '../../services/profile';
 import { inputClass, labelClass, cardClass, secondaryButtonClass } from './fieldStyles';
@@ -36,7 +36,7 @@ export const CertificationForm: React.FC<CertificationFormProps> = ({ entries, o
         <div key={entry.id} className={cardClass} data-testid={`certification-entry-${idx}`}>
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-surface-300 flex items-center gap-1">
-              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <Medal className="w-3.5 h-3.5 text-amber-400" />
               Certification {idx + 1}
             </span>
             <button
@@ -46,7 +46,7 @@ export const CertificationForm: React.FC<CertificationFormProps> = ({ entries, o
               onClick={() => remove(entry.id)}
               className="p-1 rounded text-surface-500 hover:text-rose-400 hover:bg-rose-500/10"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash className="w-3.5 h-3.5" />
             </button>
           </div>
           <div>

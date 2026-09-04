@@ -1,18 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Settings,
-  Key,
-  Eye,
-  EyeOff,
-  Save,
-  Trash2,
-  CheckCircle2,
-  Shield,
-  Sliders,
-  Sparkles,
-  AlertTriangle,
-  Zap,
-} from 'lucide-react';
+import { CheckCircle, Eye, EyeSlash, FloppyDisk, Gear, Key, Lightning, Shield, Sliders, Sparkle, Trash, Warning } from '@phosphor-icons/react';
 import { UserSettings, DEFAULT_SETTINGS, AIProviderType } from '../../types/settings';
 import { settingsStorage } from '../../services/storage/settingsStorage';
 import { ATS_PRESETS } from '../../services/scoring/atsEngine';
@@ -56,13 +43,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
     <div className="space-y-5 pb-8">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Settings className="w-4 h-4 text-brand-400" />
+        <Gear className="w-4 h-4 text-brand-400" />
         <h2 className="text-xs font-semibold text-white tracking-tight">Extension Settings & Engine Mode</h2>
       </div>
 
       {saveSuccess && (
         <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-1.5 animate-fadeIn">
-          <CheckCircle2 className="w-3.5 h-3.5" />
+          <CheckCircle className="w-3.5 h-3.5" />
           <span>Settings saved successfully!</span>
         </div>
       )}
@@ -70,7 +57,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
       {/* Engine Status Banner */}
       <div className="p-4 rounded-xl bg-brand-950/30 border border-brand-500/30 space-y-2">
         <div className="flex items-center gap-2 text-brand-300 text-xs font-semibold">
-          <Zap className="w-4 h-4 text-brand-400" />
+          <Lightning className="w-4 h-4 text-brand-400" />
           <span>100% Local Deterministic Engine (Active)</span>
         </div>
         <p className="text-[11px] text-brand-200/80 leading-relaxed">
@@ -82,7 +69,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
       <div className="p-4 rounded-xl bg-surface-900 border border-surface-800 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-semibold text-surface-200">
-            <Sparkles className="w-4 h-4 text-surface-400" />
+            <Sparkle className="w-4 h-4 text-surface-400" />
             <span>Optional LLM Integration</span>
           </div>
           <span className="text-[10px] text-surface-500 font-mono">Optional</span>
@@ -136,7 +123,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
                   onClick={() => setShowApiKey(!showApiKey)}
                   className="absolute right-2.5 top-2 text-surface-500 hover:text-surface-300"
                 >
-                  {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  {showApiKey ? <EyeSlash className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
@@ -266,9 +253,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
       {/* Save Button */}
       <button
         onClick={handleSave}
-        className="w-full py-2.5 px-4 rounded-xl bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 transition-all active:scale-[0.99]"
+        className="w-full py-2.5 px-4 rounded-md bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950"
       >
-        <Save className="w-4 h-4" />
+        <FloppyDisk className="w-4 h-4" />
         <span>Save Settings</span>
       </button>
 
@@ -278,7 +265,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
           onClick={() => setShowClearModal(true)}
           className="w-full py-2 px-3 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash className="w-3.5 h-3.5" />
           <span>Clear All RezBuilder Data</span>
         </button>
       </div>
@@ -288,7 +275,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface-900 border border-rose-500/30 rounded-2xl w-full max-w-sm p-4 space-y-3 shadow-2xl">
             <div className="flex items-center gap-2 text-rose-400">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <Warning className="w-5 h-5 shrink-0" />
               <h3 className="text-sm font-semibold">Delete All Extension Data?</h3>
             </div>
             <p className="text-xs text-surface-300 leading-relaxed">
@@ -306,7 +293,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
                 type="button"
                 onClick={handleClearAll}
                 disabled={isClearing}
-                className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md shadow-rose-600/30"
+                className="px-4 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950"
               >
                 {isClearing ? 'Clearing...' : 'Yes, Delete Everything'}
               </button>

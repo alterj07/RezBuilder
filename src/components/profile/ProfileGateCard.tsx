@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Circle, ArrowRight } from 'lucide-react';
+import { ArrowRight, Circle, Lock } from '@phosphor-icons/react';
 import { ProfileCompleteness } from '../../types/profile';
 
 interface ProfileGateCardProps {
@@ -60,7 +60,7 @@ export const ProfileGateCard: React.FC<ProfileGateCardProps> = ({ completeness, 
         type="button"
         data-testid="profile-gate-cta"
         onClick={onGoToProfile}
-        className="w-full max-w-xs py-2.5 px-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 transition-all active:scale-[0.99]"
+        className="w-full max-w-xs py-2.5 px-3 rounded-md bg-brand-600 hover:bg-brand-500 active:scale-[0.98] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950"
       >
         <span>Complete profile</span>
         <ArrowRight className="w-4 h-4" />

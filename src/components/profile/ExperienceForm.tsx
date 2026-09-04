@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, Briefcase, FolderGit2, AlertCircle } from 'lucide-react';
+import { Briefcase, GitBranch, Plus, Trash, WarningCircle } from '@phosphor-icons/react';
 import { ExperienceType, ProfileExperience } from '../../types/profile';
 import { createProfileEntityId } from '../../services/profile';
 import { TagInput } from './TagInput';
@@ -92,7 +92,7 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-surface-300 flex items-center gap-1">
                 {isProject ? (
-                  <FolderGit2 className="w-3.5 h-3.5 text-brand-400" />
+                  <GitBranch className="w-3.5 h-3.5 text-brand-400" />
                 ) : (
                   <Briefcase className="w-3.5 h-3.5 text-brand-400" />
                 )}
@@ -105,7 +105,7 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                 onClick={() => remove(entry.id)}
                 className="p-1 rounded text-surface-500 hover:text-rose-400 hover:bg-rose-500/10"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -147,7 +147,7 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
             </div>
             {(errors.company || errors.title) && (
               <p className={errorTextClass} data-testid={`experience-error-${idx}`}>
-                <AlertCircle className="w-3 h-3" />
+                <WarningCircle className="w-3 h-3" />
                 {[errors.company, errors.title].filter(Boolean).join(' · ')}
               </p>
             )}

@@ -1,14 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import {
-  Briefcase,
-  FileText,
-  Sparkles,
-  MessageSquare,
-  Settings,
-  ShieldCheck,
-  Zap,
-  UserCircle2,
-} from 'lucide-react';
+import { Briefcase, ChatCircleText, FileText, Gear, IconContext, Lightning, ShieldCheck, Sparkle, UserCircle } from '@phosphor-icons/react';
 import { JobPosting } from '../types/job';
 import { Resume, TailoredResume } from '../types/resume';
 import { UserProfile } from '../types/profile';
@@ -204,18 +195,26 @@ export default function App() {
   const profileGate = !completeness.isComplete;
   const gate = <ProfileGateCard completeness={completeness} onGoToProfile={() => setActiveTab('profile')} />;
 
+  const navItemClass = (tab: TabType) =>
+    `relative flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface-500 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-900 ${
+      activeTab === tab
+        ? 'bg-surface-800 text-white border border-surface-700/60'
+        : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/60'
+    }`;
+
   return (
+    <IconContext.Provider value={{ weight: 'bold' }}>
     <div className="flex flex-col h-screen w-full bg-surface-950 text-surface-100 overflow-hidden font-sans select-none">
       {/* Extension Header */}
       <header className="px-4 py-3 bg-surface-900/95 border-b border-surface-800 flex items-center justify-between shrink-0 backdrop-blur-sm z-10">
         <div className="flex items-center space-x-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <Zap className="w-4 h-4 text-white fill-white" />
+          <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
+            <Lightning className="w-4 h-4 text-white" />
           </div>
           <div>
             <h1 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5 leading-none">
               RezBuilder
-              <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20 font-semibold">
+              <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20 font-semibold tracking-wide">
                 v1.0
               </span>
             </h1>
@@ -239,13 +238,9 @@ export default function App() {
         <button
           onClick={() => setActiveTab('profile')}
           data-testid="nav-profile"
-          className={`relative flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
-            activeTab === 'profile'
-              ? 'bg-surface-800 text-white shadow-sm border border-surface-700/60'
-              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-850'
-          }`}
+          className={navItemClass('profile')}
         >
-          <UserCircle2 className="w-3.5 h-3.5" />
+          <UserCircle className="w-3.5 h-3.5" />
           <span>Profile</span>
           {profileGate && (
             <span
@@ -256,26 +251,12 @@ export default function App() {
           )}
         </button>
 
-        <button
-          onClick={() => setActiveTab('job')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
-            activeTab === 'job'
-              ? 'bg-surface-800 text-white shadow-sm border border-surface-700/60'
-              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-850'
-          }`}
-        >
+        <button onClick={() => setActiveTab('job')} className={navItemClass('job')}>
           <Briefcase className="w-3.5 h-3.5" />
           <span>Job</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('resumes')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
-            activeTab === 'resumes'
-              ? 'bg-surface-800 text-white shadow-sm border border-surface-700/60'
-              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-850'
-          }`}
-        >
+        <button onClick={() => setActiveTab('resumes')} className={navItemClass('resumes')}>
           <FileText className="w-3.5 h-3.5" />
           <span>Resumes</span>
           {resumes.length > 0 && (
@@ -285,45 +266,32 @@ export default function App() {
           )}
         </button>
 
-        <button
-          onClick={() => setActiveTab('tailor')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
-            activeTab === 'tailor'
-              ? 'bg-surface-800 text-white shadow-sm border border-surface-700/60'
-              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-850'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+        <button onClick={() => setActiveTab('tailor')} className={navItemClass('tailor')}>
+          <Sparkle className="w-3.5 h-3.5 text-brand-400" />
           <span>Tailor</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('interview')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
-            activeTab === 'interview'
-              ? 'bg-surface-800 text-white shadow-sm border border-surface-700/60'
-              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-850'
-          }`}
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
+        <button onClick={() => setActiveTab('interview')} className={navItemClass('interview')}>
+          <ChatCircleText className="w-3.5 h-3.5" />
           <span>Prep</span>
         </button>
 
         <button
           onClick={() => setActiveTab('settings')}
-          className={`p-1.5 rounded-lg text-xs font-medium transition-all ${
+          className={`p-1.5 rounded-md text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface-500 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-900 ${
             activeTab === 'settings'
-              ? 'bg-surface-800 text-white shadow-sm border border-surface-700/60'
-              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-850'
+              ? 'bg-surface-800 text-white border border-surface-700/60'
+              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/60'
           }`}
           title="Settings & Privacy"
         >
-          <Settings className="w-3.5 h-3.5" />
+          <Gear className="w-3.5 h-3.5" />
         </button>
       </nav>
 
       {/* Main Tab Content Area */}
       <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div key={activeTab} className="motion-safe:animate-tab-enter">
         {activeTab === 'profile' && (
           <ProfileTab profile={profile} resumes={resumes} onProfileSaved={setProfile} />
         )}
@@ -376,6 +344,7 @@ export default function App() {
         {activeTab === 'settings' && (
           <SettingsTab onDataCleared={handleDataCleared} />
         )}
+        </div>
       </main>
 
       {/* Footer Trust Badge */}
@@ -387,5 +356,6 @@ export default function App() {
         <span>RezBuilder v1.0</span>
       </footer>
     </div>
+    </IconContext.Provider>
   );
 }

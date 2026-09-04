@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import { ProfileCompleteness } from '../../types/profile';
 
 interface CompletenessBarProps {
@@ -38,7 +38,7 @@ export const CompletenessBar: React.FC<CompletenessBarProps> = ({ completeness, 
             <ul className="space-y-0.5" data-testid="completeness-missing">
               {missing.map((m) => (
                 <li key={m} className="text-[11px] text-rose-300 flex items-start gap-1">
-                  <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                  <WarningCircle className="w-3 h-3 mt-0.5 shrink-0" />
                   <span>{m}</span>
                 </li>
               ))}
@@ -46,7 +46,7 @@ export const CompletenessBar: React.FC<CompletenessBarProps> = ({ completeness, 
           )}
           {isComplete && (
             <p className="text-[11px] text-brand-300 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
+              <CheckCircle className="w-3 h-3" />
               <span>All required sections are filled in.</span>
             </p>
           )}

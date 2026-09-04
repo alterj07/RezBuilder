@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CaretDown, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import { FitFactor } from '../../types/fit';
 
 interface FitFactorRowProps {
@@ -47,7 +47,7 @@ export const FitFactorRow: React.FC<FitFactorRowProps> = ({ factor }) => {
         <span className="flex items-center gap-1.5 shrink-0">
           <span className="font-mono text-surface-200">{applicable ? `${score}%` : '—'}</span>
           {hasDetails && (
-            <ChevronDown className={`w-3 h-3 text-surface-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            <CaretDown className={`w-3 h-3 text-surface-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           )}
         </span>
       </button>
@@ -64,13 +64,13 @@ export const FitFactorRow: React.FC<FitFactorRowProps> = ({ factor }) => {
         <ul data-testid={`fit-factor-${factor?.key}-details`} className="pt-1 space-y-0.5">
           {evidence.map((item, idx) => (
             <li key={`e${idx}`} className="flex items-start gap-1.5 text-[10px] text-surface-300 leading-snug">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0 mt-px" />
+              <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0 mt-px" />
               <span>{item}</span>
             </li>
           ))}
           {gaps.map((item, idx) => (
             <li key={`g${idx}`} className="flex items-start gap-1.5 text-[10px] text-surface-400 leading-snug">
-              <AlertCircle className="w-3 h-3 text-amber-400 shrink-0 mt-px" />
+              <WarningCircle className="w-3 h-3 text-amber-400 shrink-0 mt-px" />
               <span>{item}</span>
             </li>
           ))}

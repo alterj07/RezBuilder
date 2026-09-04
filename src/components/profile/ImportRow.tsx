@@ -1,15 +1,5 @@
 import React, { useRef, useState } from 'react';
-import {
-  Linkedin,
-  FileText,
-  FileSpreadsheet,
-  ExternalLink,
-  AlertTriangle,
-  CheckCircle2,
-  HelpCircle,
-  X,
-  RotateCcw,
-} from 'lucide-react';
+import { ArrowCounterClockwise, ArrowSquareOut, CheckCircle, FileText, LinkedinLogo, Question, Table, Warning, X } from '@phosphor-icons/react';
 import { Resume } from '../../types/resume';
 import { LINKEDIN_SECTIONS } from '../../background/linkedinImport';
 import type { LinkedInPageStatus, LinkedInSection, LinkedInSectionKind } from '../../background/linkedinImport';
@@ -158,7 +148,7 @@ export const ImportRow: React.FC<ImportRowProps> = ({
           {status.kind === 'busy' && status.source === 'linkedin' ? (
             <span className="w-3 h-3 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <Linkedin className="w-3.5 h-3.5 text-brand-400" />
+            <LinkedinLogo className="w-3.5 h-3.5 text-brand-400" />
           )}
           <span className="truncate">LinkedIn</span>
         </button>
@@ -190,7 +180,7 @@ export const ImportRow: React.FC<ImportRowProps> = ({
           {status.kind === 'busy' && status.source === 'export' ? (
             <span className="w-3 h-3 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <FileSpreadsheet className="w-3.5 h-3.5 text-brand-400" />
+            <Table className="w-3.5 h-3.5 text-brand-400" />
           )}
           <span className="truncate">Data export</span>
         </button>
@@ -253,7 +243,7 @@ export const ImportRow: React.FC<ImportRowProps> = ({
         onClick={() => setShowExportHelp((v) => !v)}
         className={`${ghostButtonClass} -ml-2`}
       >
-        <HelpCircle className="w-3 h-3" />
+        <Question className="w-3 h-3" />
         How do I get my LinkedIn data export?
       </button>
       {showExportHelp && (
@@ -311,9 +301,9 @@ export const ImportRow: React.FC<ImportRowProps> = ({
           <div className="flex items-start justify-between gap-2">
             <span className="flex items-start gap-1.5">
               {finished.kind === 'success' ? (
-                <CheckCircle2 className="w-3.5 h-3.5 mt-px shrink-0" />
+                <CheckCircle className="w-3.5 h-3.5 mt-px shrink-0" />
               ) : (
-                <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
+                <Warning className="w-3.5 h-3.5 mt-px shrink-0" />
               )}
               <span data-testid="import-status-message">{finished.message}</span>
             </span>
@@ -346,7 +336,7 @@ export const ImportRow: React.FC<ImportRowProps> = ({
                       className="ml-1.5 inline-flex items-center gap-0.5 text-brand-300 hover:underline"
                     >
                       Open your full skills list
-                      <ExternalLink className="w-3 h-3" />
+                      <ArrowSquareOut className="w-3 h-3" />
                     </button>
                   )}
                 </li>
@@ -364,7 +354,7 @@ export const ImportRow: React.FC<ImportRowProps> = ({
                   onClick={() => onRetryLinkedInSection?.(section.kind)}
                   className={secondaryButtonClass}
                 >
-                  <RotateCcw className="w-3 h-3" />
+                  <ArrowCounterClockwise className="w-3 h-3" />
                   Retry {section.label.toLowerCase()}
                 </button>
               ))}

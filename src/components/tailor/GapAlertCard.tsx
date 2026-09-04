@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Lightbulb } from 'lucide-react';
+import { Lightbulb, Warning } from '@phosphor-icons/react';
 
 interface GapAlertCardProps {
   unresolvedGaps: string[];
@@ -11,7 +11,7 @@ export const GapAlertCard: React.FC<GapAlertCardProps> = ({ unresolvedGaps }) =>
   return (
     <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-2.5">
       <div className="flex items-center gap-2 text-amber-400">
-        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <Warning className="w-4 h-4 shrink-0" />
         <h4 className="text-xs font-semibold tracking-tight">
           Unresolved JD Requirements & Gaps ({unresolvedGaps.length})
         </h4>

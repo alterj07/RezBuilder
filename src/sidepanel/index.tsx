@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           data-testid="error-boundary-fallback"
           className="flex flex-col items-center justify-center min-h-screen p-6 bg-surface-950 text-surface-100 text-center space-y-3 font-sans"
         >
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-xl font-bold shadow-lg shadow-rose-950/30">
+          <div className="w-12 h-12 rounded-xl bg-rose-900/30 border border-rose-700/50 flex items-center justify-center text-rose-400 text-xl font-serif font-bold">
             !
           </div>
           <h2 className="text-sm font-semibold text-white tracking-tight">Something went wrong</h2>
@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <button
             onClick={this.handleReload}
             data-testid="error-boundary-reload-button"
-            className="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold shadow-md shadow-brand-950/20 transition-all active:scale-95"
+            className="px-4 py-2 rounded-md bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950"
           >
             Reload Sidepanel
           </button>

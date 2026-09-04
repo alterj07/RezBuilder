@@ -1,28 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  User,
-  GraduationCap,
-  Sparkles,
-  Briefcase,
-  Award,
-  BookOpen,
-  ClipboardCheck,
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  Pencil,
-  Trash2,
-  RotateCcw,
-  AlertCircle,
-  Mail,
-  Phone,
-  MapPin,
-  Linkedin,
-  Github,
-  Globe,
-  Save,
-  X,
-} from "lucide-react";
+import { ArrowCounterClockwise, BookOpen, Briefcase, CaretLeft, CaretRight, Check, ClipboardText, EnvelopeSimple, FloppyDisk, GithubLogo, Globe, GraduationCap, LinkedinLogo, MapPin, Medal, Pencil, Phone, Sparkle, Trash, User, WarningCircle, X } from '@phosphor-icons/react';
 import {
   ProfileImport,
   ProfileSource,
@@ -118,7 +95,7 @@ const STEPS: {
     key: "skills",
     title: "Skills",
     description: "Rate what you know from 1 (familiar) to 5 (expert).",
-    icon: Sparkles,
+    icon: Sparkle,
   },
   {
     key: "experiences",
@@ -130,7 +107,7 @@ const STEPS: {
     key: "certifications",
     title: "Certifications",
     description: "Optional, but they boost fit for some roles.",
-    icon: Award,
+    icon: Medal,
     optional: true,
   },
   {
@@ -144,7 +121,7 @@ const STEPS: {
     key: "review",
     title: "Review",
     description: "Check everything before finishing.",
-    icon: ClipboardCheck,
+    icon: ClipboardText,
   },
 ];
 
@@ -962,7 +939,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               >
                 {issues.map((issue) => (
                   <li key={issue} className={errorTextClass}>
-                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <WarningCircle className="w-3 h-3 shrink-0" />
                     <span>{issue}</span>
                   </li>
                 ))}
@@ -980,7 +957,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               disabled={step === 0 || saving}
               className={secondaryButtonClass}
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <CaretLeft className="w-3.5 h-3.5" />
               Back
             </button>
             <div className="flex items-center gap-2">
@@ -1017,7 +994,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                   className={primaryButtonClass}
                 >
                   {saving ? "Saving…" : "Next"}
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <CaretRight className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
@@ -1069,7 +1046,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                 disabled={saving}
                 className={primaryButtonClass}
               >
-                <Save className="w-3 h-3" />
+                <FloppyDisk className="w-3 h-3" />
                 {saving ? "Saving…" : "Save"}
               </button>
             </div>
@@ -1098,11 +1075,11 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
     icon: React.FC<{ className?: string }>;
     value?: string;
   }[] = [
-    { icon: Mail, value: c.email },
+    { icon: EnvelopeSimple, value: c.email },
     { icon: Phone, value: c.phone },
     { icon: MapPin, value: c.location },
-    { icon: Linkedin, value: c.linkedinUrl },
-    { icon: Github, value: c.github },
+    { icon: LinkedinLogo, value: c.linkedinUrl },
+    { icon: GithubLogo, value: c.github },
     { icon: Globe, value: c.website },
   ];
 
@@ -1204,7 +1181,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         {sectionCard(
           "skills",
           `Skills (${draft.skills.length})`,
-          Sparkles,
+          Sparkle,
           draft.skills.length === 0 ? (
             <p className={hintTextClass}>No skills yet.</p>
           ) : (
@@ -1300,7 +1277,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         {sectionCard(
           "certifications",
           `Certifications (${draft.certifications.length})`,
-          Award,
+          Medal,
           draft.certifications.length === 0 ? (
             <p className={hintTextClass}>None added.</p>
           ) : (
@@ -1376,7 +1353,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             onClick={rerunWizard}
             className={ghostButtonClass}
           >
-            <RotateCcw className="w-3 h-3" />
+            <ArrowCounterClockwise className="w-3 h-3" />
             Re-run wizard
           </button>
           {draft.completedAt && (
@@ -1404,7 +1381,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                   disabled={saving}
                   className={dangerButtonClass}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash className="w-3.5 h-3.5" />
                   {saving ? "Clearing…" : "Yes, clear it"}
                 </button>
                 <button
@@ -1424,7 +1401,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               onClick={() => setConfirmClear(true)}
               className={dangerButtonClass}
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash className="w-3.5 h-3.5" />
               Clear profile
             </button>
           )}

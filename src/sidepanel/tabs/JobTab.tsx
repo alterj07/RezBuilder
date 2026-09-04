@@ -1,19 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Briefcase,
-  RefreshCw,
-  Sparkles,
-  CheckCircle2,
-  AlertCircle,
-  TrendingUp,
-  MapPin,
-  ExternalLink,
-  Edit3,
-  Sliders,
-  ChevronDown,
-  Layers,
-  Award,
-} from 'lucide-react';
+import { ArrowSquareOut, ArrowsClockwise, Briefcase, CaretDown, CheckCircle, MapPin, Medal, PencilSimple, Sliders, Sparkle, Stack, TrendUp, WarningCircle } from '@phosphor-icons/react';
 import { JobPosting } from '../../types/job';
 import { Resume } from '../../types/resume';
 import { AtsPresetName, AtsScoreResult } from '../../types/scoring';
@@ -121,7 +107,7 @@ export const JobTab: React.FC<JobTabProps> = ({
             className="p-1.5 rounded-lg border border-surface-800 bg-surface-900 text-surface-300 hover:text-white hover:border-surface-700 text-xs flex items-center gap-1 transition-all"
             title="Paste Job Description Manually"
           >
-            <Edit3 className="w-3 h-3" />
+            <PencilSimple className="w-3 h-3" />
             <span className="text-[11px]">Paste JD</span>
           </button>
           <button
@@ -130,7 +116,7 @@ export const JobTab: React.FC<JobTabProps> = ({
             className="p-1.5 rounded-lg border border-surface-800 bg-surface-900 text-surface-300 hover:text-white hover:border-surface-700 text-xs flex items-center gap-1 transition-all disabled:opacity-50"
             title="Re-scrape current tab"
           >
-            <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin text-brand-400' : ''}`} />
+            <ArrowsClockwise className={`w-3 h-3 ${isLoading ? 'animate-spin text-brand-400' : ''}`} />
             <span className="text-[11px]">Scrape Tab</span>
           </button>
         </div>
@@ -142,7 +128,7 @@ export const JobTab: React.FC<JobTabProps> = ({
           data-testid="scrape-notice"
           className="flex items-start gap-2 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-[11px] text-amber-300 leading-snug"
         >
-          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+          <WarningCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
           <span>{scrapeNotice}</span>
         </div>
       )}
@@ -181,7 +167,7 @@ export const JobTab: React.FC<JobTabProps> = ({
                 className="text-surface-500 hover:text-brand-400 transition-colors p-1"
                 title="Open job posting"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ArrowSquareOut className="w-4 h-4" />
               </a>
             )}
           </div>
@@ -225,7 +211,7 @@ export const JobTab: React.FC<JobTabProps> = ({
           <div className="flex flex-col gap-2 p-3 rounded-xl bg-surface-900/60 border border-surface-800">
             <div className="flex items-center justify-between">
               <label className="text-[11px] text-surface-400 font-medium flex items-center gap-1">
-                <Layers className="w-3 h-3 text-brand-400" />
+                <Stack className="w-3 h-3 text-brand-400" />
                 <span>Base Resume:</span>
               </label>
               {resumes.length > 0 ? (
@@ -271,8 +257,8 @@ export const JobTab: React.FC<JobTabProps> = ({
 
           {/* Multi-Resume Recommendation Badge */}
           {comparisonResult && comparisonResult.recommendation && (
-            <div className="p-3 rounded-xl bg-gradient-to-r from-brand-950/40 to-surface-900 border border-brand-500/30 flex items-start gap-2.5">
-              <Award className="w-4 h-4 text-brand-400 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-xl bg-brand-900/30 border border-brand-500/30 flex items-start gap-2.5">
+              <Medal className="w-4 h-4 text-brand-400 shrink-0 mt-0.5" />
               <div className="text-xs">
                 <div className="font-semibold text-brand-300 flex items-center gap-1.5">
                   Best Fit: {comparisonResult.recommendation.resumeName}
@@ -301,12 +287,12 @@ export const JobTab: React.FC<JobTabProps> = ({
                   </div>
                 </div>
                 <div
-                  className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center font-mono font-bold shadow-lg ${getScoreColor(
+                  className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center font-bold ${getScoreColor(
                     scoreResult.overallScore
                   )}`}
                 >
-                  <span className="text-xl leading-none">{scoreResult.overallScore}</span>
-                  <span className="text-[9px] font-normal opacity-80">/ 100</span>
+                  <span className="font-serif text-xl leading-none" style={{ letterSpacing: '-0.02em' }}>{scoreResult.overallScore}</span>
+                  <span className="text-[9px] font-sans font-normal opacity-80">/ 100</span>
                 </div>
               </div>
 
@@ -409,10 +395,10 @@ export const JobTab: React.FC<JobTabProps> = ({
                   className="w-full flex items-center justify-between text-xs text-surface-300 hover:text-white py-1"
                 >
                   <span className="font-medium flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-brand-400" />
+                    <TrendUp className="w-3.5 h-3.5 text-brand-400" />
                     <span>Keyword Breakdown ({scoreResult.keywordDetails.matchedKeywords} Matched, {scoreResult.keywordDetails.missingKeywords} Missing)</span>
                   </span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showKeywordList ? 'rotate-180' : ''}`} />
+                  <CaretDown className={`w-3.5 h-3.5 transition-transform ${showKeywordList ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showKeywordList && (
@@ -429,7 +415,7 @@ export const JobTab: React.FC<JobTabProps> = ({
                               key={idx}
                               className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/40 text-emerald-300 border border-emerald-800/40 flex items-center gap-1"
                             >
-                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              <CheckCircle className="w-2.5 h-2.5" />
                               {k.keyword}
                             </span>
                           ))}
@@ -449,7 +435,7 @@ export const JobTab: React.FC<JobTabProps> = ({
                                 key={idx}
                                 className="text-[10px] px-2 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-800/40 flex items-center gap-1"
                               >
-                                <AlertCircle className="w-2.5 h-2.5" />
+                                <WarningCircle className="w-2.5 h-2.5" />
                                 {k.keyword}
                               </span>
                             ))}
@@ -478,9 +464,9 @@ export const JobTab: React.FC<JobTabProps> = ({
               {/* Tailor CTA */}
               <button
                 onClick={onNavigateToTailor}
-                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 transition-all active:scale-[0.99]"
+                className="w-full py-2.5 px-3 rounded-md bg-brand-600 hover:bg-brand-500 active:scale-[0.98] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950"
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkle className="w-4 h-4" />
                 <span>Tailor Resume for this Role</span>
               </button>
             </div>
@@ -552,7 +538,7 @@ export const JobTab: React.FC<JobTabProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold shadow-md shadow-brand-500/20"
+                  className="px-4 py-1.5 rounded-md bg-brand-600 hover:bg-brand-500 active:scale-[0.98] text-white text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950"
                 >
                   Save & Score
                 </button>

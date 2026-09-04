@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { Plus, X } from '@phosphor-icons/react';
 import { inputClass, labelClass } from './fieldStyles';
 
 interface TagInputProps {

@@ -1,16 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Sparkles,
-  Download,
-  Printer,
-  Edit2,
-  Save,
-  CheckCircle2,
-  Layers,
-  ArrowRight,
-  ShieldCheck,
-  Zap,
-} from 'lucide-react';
+import { ArrowRight, CheckCircle, Download, FloppyDisk, Lightning, PencilSimple, Printer, ShieldCheck, Sparkle, Stack } from '@phosphor-icons/react';
 import { JobPosting } from '../../types/job';
 import { Resume, TailoredResume, ResumeSections } from '../../types/resume';
 import { DiffViewer } from '../../components/tailor/DiffViewer';
@@ -126,7 +115,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
       <div className="p-3.5 rounded-xl bg-surface-900 border border-surface-800 space-y-2">
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 text-surface-400">
-            <Layers className="w-3.5 h-3.5 text-brand-400" />
+            <Stack className="w-3.5 h-3.5 text-brand-400" />
             <span>Target:</span>
             <span className="text-white font-medium truncate max-w-[180px]">
               {job ? `${job.title} @ ${job.company}` : 'No active job'}
@@ -163,7 +152,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
       {!tailoredResume && (
         <div className="p-5 rounded-xl border border-surface-800 bg-surface-900/60 text-center space-y-3">
           <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mx-auto text-brand-400">
-            <Zap className="w-5 h-5" />
+            <Lightning className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">Deterministic ATS Customization</h3>
@@ -175,9 +164,9 @@ export const TailorTab: React.FC<TailorTabProps> = ({
           <button
             onClick={handleTailor}
             disabled={isTailoring || !job || !activeResume}
-            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 transition-all active:scale-[0.99] disabled:opacity-50"
+            className="w-full py-2.5 px-4 rounded-md bg-brand-600 hover:bg-brand-500 active:scale-[0.98] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950 disabled:opacity-50 disabled:active:scale-100"
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkle className="w-4 h-4" />
             <span>Generate Tailored Resume (Instant Local)</span>
           </button>
 
@@ -197,7 +186,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
 
       {exportSuccess && (
         <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5" />
+          <CheckCircle className="w-3.5 h-3.5" />
           <span>{exportSuccess}</span>
         </div>
       )}
@@ -208,7 +197,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
           {/* Action Header & Export Toolbar */}
           <div className="flex items-center justify-between p-3 rounded-xl bg-surface-900 border border-surface-800">
             <div className="flex items-center gap-1.5 text-xs text-brand-300 font-semibold">
-              <CheckCircle2 className="w-4 h-4 text-brand-400" />
+              <CheckCircle className="w-4 h-4 text-brand-400" />
               <span>Tailored Version Ready</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -223,7 +212,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
               <button
                 onClick={handleExportPdf}
                 className="px-2.5 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition-colors"
-                title="Print or Save clean PDF"
+                title="Print or save clean PDF"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>PDF</span>
@@ -233,7 +222,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
                 className="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition-colors"
                 title="Re-run Local Customization"
               >
-                <Zap className="w-3.5 h-3.5 text-brand-400" />
+                <Lightning className="w-3.5 h-3.5 text-brand-400" />
               </button>
             </div>
           </div>
@@ -299,7 +288,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
               onClick={() => setIsEditing(!isEditing)}
               className="text-xs text-surface-400 hover:text-white flex items-center gap-1.5 transition-colors"
             >
-              <Edit2 className="w-3.5 h-3.5 text-brand-400" />
+              <PencilSimple className="w-3.5 h-3.5 text-brand-400" />
               <span>{isEditing ? 'Close Manual Editor' : 'Edit Tailored Text Manually Before Export'}</span>
             </button>
 
@@ -344,7 +333,7 @@ export const TailorTab: React.FC<TailorTabProps> = ({
                     }}
                     className="px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold flex items-center gap-1"
                   >
-                    <Save className="w-3 h-3" />
+                    <FloppyDisk className="w-3 h-3" />
                     <span>Save Edits</span>
                   </button>
                 </div>

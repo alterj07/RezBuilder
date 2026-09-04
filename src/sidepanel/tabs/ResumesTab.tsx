@@ -1,20 +1,5 @@
 import React, { useState, useRef } from 'react';
-import {
-  UploadCloud,
-  FileText,
-  Trash2,
-  Tag,
-  ChevronUp,
-  Eye,
-  Mail,
-  Phone,
-  MapPin,
-  Linkedin,
-  Github,
-  Award,
-  KeyRound,
-  ShieldAlert,
-} from 'lucide-react';
+import { CaretUp, CloudArrowUp, EnvelopeSimple, Eye, FileText, GithubLogo, Key, LinkedinLogo, MapPin, Medal, Phone, ShieldWarning, Tag, Trash } from '@phosphor-icons/react';
 import { Resume } from '../../types/resume';
 import { parseResumeFile } from '../../services/parser';
 import { PasswordRequiredError } from '../../services/parser/pdfParser';
@@ -98,7 +83,7 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-white flex items-center gap-1.5">
-            <UploadCloud className="w-4 h-4 text-brand-400" />
+            <CloudArrowUp className="w-4 h-4 text-brand-400" />
             <span>Upload New Resume</span>
           </label>
           <div className="flex items-center gap-1">
@@ -162,7 +147,7 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface-900 border border-amber-500/40 rounded-2xl w-full max-w-sm p-4 space-y-3 shadow-2xl">
             <div className="flex items-center gap-2 text-amber-400">
-              <ShieldAlert className="w-5 h-5 shrink-0" />
+              <ShieldWarning className="w-5 h-5 shrink-0" />
               <h3 className="text-sm font-semibold">Password Protected PDF</h3>
             </div>
             <p className="text-xs text-surface-300 leading-relaxed">
@@ -195,9 +180,9 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                 <button
                   type="submit"
                   disabled={isUploading}
-                  className="px-4 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold shadow-md shadow-brand-500/20 flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-md bg-brand-600 hover:bg-brand-500 active:scale-[0.98] text-white text-xs font-semibold flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950 disabled:opacity-50 disabled:active:scale-100"
                 >
-                  <KeyRound className="w-3.5 h-3.5" />
+                  <Key className="w-3.5 h-3.5" />
                   <span>{isUploading ? 'Decrypting...' : 'Unlock & Parse'}</span>
                 </button>
               </div>
@@ -230,7 +215,7 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                   key={resume.id}
                   className={`rounded-xl border transition-all overflow-hidden ${
                     isActive
-                      ? 'border-brand-500/50 bg-surface-900/90 shadow-md shadow-brand-500/5'
+                      ? 'border-brand-500/50 bg-surface-900/90'
                       : 'border-surface-800 bg-surface-900/50 hover:border-surface-700'
                   }`}
                 >
@@ -249,7 +234,7 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                         </span>
                         {resume.isDefault && (
                           <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-800 text-surface-400 flex items-center gap-0.5">
-                            <Award className="w-2.5 h-2.5 text-amber-400" />
+                            <Medal className="w-2.5 h-2.5 text-amber-400" />
                             Default
                           </span>
                         )}
@@ -269,14 +254,14 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                         className="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition-colors"
                         title="View Extracted Sections"
                       >
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {isExpanded ? <CaretUp className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                       <button
                         onClick={() => onDeleteResume(resume.id)}
                         className="p-1.5 rounded-lg text-surface-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                         title="Delete Resume"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -288,7 +273,7 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                       <div className="flex flex-wrap gap-2 text-[11px] text-surface-400 pb-2 border-b border-surface-800/60">
                         {resume.sections?.contact?.email && (
                           <span className="flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-brand-400" />
+                            <EnvelopeSimple className="w-3 h-3 text-brand-400" />
                             {resume.sections.contact.email}
                           </span>
                         )}
@@ -306,13 +291,13 @@ export const ResumesTab: React.FC<ResumesTabProps> = ({
                         )}
                         {resume.sections?.contact?.linkedin && (
                           <span className="flex items-center gap-1">
-                            <Linkedin className="w-3 h-3 text-brand-400" />
+                            <LinkedinLogo className="w-3 h-3 text-brand-400" />
                             LinkedIn
                           </span>
                         )}
                         {resume.sections?.contact?.github && (
                           <span className="flex items-center gap-1">
-                            <Github className="w-3 h-3 text-brand-400" />
+                            <GithubLogo className="w-3 h-3 text-brand-400" />
                             GitHub
                           </span>
                         )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, ShieldAlert, CheckCircle2, ArrowRight, ChevronDown, Info } from 'lucide-react';
+import { ArrowRight, CaretDown, CheckCircle, Info, ShieldWarning, Target } from '@phosphor-icons/react';
 import { FitResult } from '../../types/fit';
 import { FitFactorRow } from './FitFactorRow';
 import { SkillMatchChip } from './SkillMatchChip';
@@ -57,7 +57,7 @@ export const BestFitCard: React.FC<BestFitCardProps> = ({ result }) => {
   return (
     <div
       data-testid="best-fit-card"
-      className="rounded-xl border border-surface-800 bg-surface-900/90 p-4 space-y-4 shadow-sm"
+      className="rounded-xl border border-surface-800 bg-surface-900/90 p-4 space-y-4"
     >
       {/* Headline */}
       <div className="flex items-center justify-between gap-3">
@@ -66,8 +66,8 @@ export const BestFitCard: React.FC<BestFitCardProps> = ({ result }) => {
             <Target className="w-3.5 h-3.5 text-brand-400" />
             <span>Best Fit</span>
           </div>
-          <div className={`text-2xl font-bold font-mono leading-tight mt-1 ${band.text}`}>
-            Best Fit <span data-testid="best-fit-percent">{percent}%</span>
+          <div className={`font-serif font-semibold leading-none mt-1.5 ${band.text}`} style={{ fontSize: '2rem', letterSpacing: '-0.02em' }}>
+            <span data-testid="best-fit-percent">{percent}%</span>
           </div>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className={`text-[10px] font-medium ${band.text}`}>{bandLabel(percent)}</span>
@@ -82,10 +82,10 @@ export const BestFitCard: React.FC<BestFitCardProps> = ({ result }) => {
           </div>
         </div>
         <div
-          className={`w-16 h-16 rounded-full border-4 flex items-center justify-center font-mono font-bold shrink-0 ${band.ring} ${band.bg} ${band.text}`}
+          className={`w-16 h-16 rounded-full border flex items-center justify-center shrink-0 ${band.ring} ${band.bg} ${band.text}`}
           aria-hidden="true"
         >
-          <span className="text-lg leading-none">{percent}</span>
+          <span className="font-serif text-xl leading-none" style={{ letterSpacing: '-0.02em' }}>{percent}</span>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export const BestFitCard: React.FC<BestFitCardProps> = ({ result }) => {
               data-testid="best-fit-blocker"
               className="flex items-start gap-2 p-2 rounded-lg border border-rose-500/40 bg-rose-500/10 text-[11px] text-rose-200 leading-snug"
             >
-              <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-px" />
+              <ShieldWarning className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-px" />
               <span>{blocker}</span>
             </div>
           ))}
@@ -119,7 +119,7 @@ export const BestFitCard: React.FC<BestFitCardProps> = ({ result }) => {
               <ul className="space-y-1">
                 {strengths.map((item, idx) => (
                   <li key={idx} className="flex items-start gap-1.5 text-[11px] text-surface-200 leading-snug">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-px" />
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-px" />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -152,7 +152,7 @@ export const BestFitCard: React.FC<BestFitCardProps> = ({ result }) => {
           aria-expanded={showBreakdown}
         >
           <span className="font-medium">Factor breakdown</span>
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBreakdown ? 'rotate-180' : ''}`} />
+          <CaretDown className={`w-3.5 h-3.5 transition-transform ${showBreakdown ? 'rotate-180' : ''}`} />
         </button>
 
         {showBreakdown && (

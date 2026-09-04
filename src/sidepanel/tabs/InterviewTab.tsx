@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  MessageSquare,
-  Sparkles,
-  Download,
-  CheckCircle2,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  HelpCircle,
-  Award,
-  Terminal,
-  Target,
-} from 'lucide-react';
+import { ArrowsClockwise, CaretDown, CaretUp, ChatCircleText, CheckCircle, Download, Medal, Question, Sparkle, Target, Terminal } from '@phosphor-icons/react';
 import { JobPosting } from '../../types/job';
 import { Resume } from '../../types/resume';
 import { InterviewPrepBriefing } from '../../types/interview';
@@ -94,7 +82,7 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
       {/* Initial Empty State / Generator CTA */}
       {!briefing && (
         <div className="p-6 rounded-xl border border-surface-800 bg-surface-900/60 text-center space-y-3">
-          <MessageSquare className="w-8 h-8 text-brand-400 mx-auto" />
+          <ChatCircleText className="w-8 h-8 text-brand-400 mx-auto" />
           <div>
             <h3 className="text-sm font-semibold text-white">AI Interview Prep Briefing</h3>
             <p className="text-xs text-surface-400 max-w-xs mx-auto mt-1 leading-relaxed">
@@ -105,16 +93,16 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
           <button
             onClick={handleGenerate}
             disabled={isLoading || !job}
-            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 transition-all active:scale-[0.99] disabled:opacity-50"
+            className="w-full py-2.5 px-4 rounded-md bg-brand-600 hover:bg-brand-500 active:scale-[0.98] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950 disabled:opacity-50 disabled:active:scale-100"
           >
             {isLoading ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
+                <ArrowsClockwise className="w-4 h-4 animate-spin" />
                 <span>Generating Interview Briefing...</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
+                <Sparkle className="w-4 h-4" />
                 <span>Generate Prep Briefing</span>
               </>
             )}
@@ -134,7 +122,7 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
 
       {downloadSuccess && (
         <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5" />
+          <CheckCircle className="w-3.5 h-3.5" />
           <span>Markdown cheat sheet downloaded!</span>
         </div>
       )}
@@ -143,7 +131,7 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
       {briefing && (
         <div className="space-y-4 animate-fadeIn">
           {/* Role Synthesis Card */}
-          <div className="p-4 rounded-xl bg-gradient-to-br from-brand-950/40 via-surface-900 to-surface-900 border border-brand-500/30 space-y-2">
+          <div className="p-4 rounded-xl bg-brand-900/25 border border-brand-500/30 space-y-2">
             <div className="flex items-center gap-2 text-brand-300 text-xs font-semibold">
               <Target className="w-4 h-4 text-brand-400" />
               <span>What This Role Actually Cares About</span>
@@ -178,7 +166,7 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
           {briefing.technicalQuestions.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <HelpCircle className="w-3.5 h-3.5 text-brand-400" />
+                <Question className="w-3.5 h-3.5 text-brand-400" />
                 <span>Likely Technical Questions ({briefing.technicalQuestions.length})</span>
               </h4>
               <div className="space-y-2">
@@ -195,9 +183,9 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
                           <span className="leading-snug">{q.question}</span>
                         </div>
                         {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-surface-400 shrink-0 mt-0.5" />
+                          <CaretUp className="w-4 h-4 text-surface-400 shrink-0 mt-0.5" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-surface-400 shrink-0 mt-0.5" />
+                          <CaretDown className="w-4 h-4 text-surface-400 shrink-0 mt-0.5" />
                         )}
                       </button>
 
@@ -239,7 +227,7 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
           {briefing.behavioralQuestions.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-brand-400" />
+                <Medal className="w-3.5 h-3.5 text-brand-400" />
                 <span>Behavioral Questions & STAR Tips ({briefing.behavioralQuestions.length})</span>
               </h4>
               <div className="space-y-2">
@@ -256,9 +244,9 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
                           <span className="leading-snug">{b.question}</span>
                         </div>
                         {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-surface-400 shrink-0 mt-0.5" />
+                          <CaretUp className="w-4 h-4 text-surface-400 shrink-0 mt-0.5" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-surface-400 shrink-0 mt-0.5" />
+                          <CaretDown className="w-4 h-4 text-surface-400 shrink-0 mt-0.5" />
                         )}
                       </button>
 
@@ -285,7 +273,7 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
           {briefing.questionsToAskInterviewer.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+                <Sparkle className="w-3.5 h-3.5 text-brand-400" />
                 <span>Smart Questions to Ask Interviewer ({briefing.questionsToAskInterviewer.length})</span>
               </h4>
               <div className="space-y-2">
@@ -306,7 +294,7 @@ export const InterviewTab: React.FC<InterviewTabProps> = ({ job, activeResume })
               disabled={isLoading}
               className="w-full py-2 rounded-xl border border-surface-800 hover:border-surface-700 bg-surface-900 text-surface-300 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <ArrowsClockwise className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               <span>Re-generate Interview Briefing</span>
             </button>
           </div>
