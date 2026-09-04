@@ -24,6 +24,17 @@ export interface SetupMockChromeResult {
   removeTab: (tabId: number) => Promise<void>;
   /** Delivers a message to background listeners as if sent from a tab. */
   sendFromTab: (tabId: number, message: any) => Promise<any>;
+  /** Tabs opened through `chrome.tabs.create`, in creation order. */
+  createdTabs: MockTab[];
+}
+
+export interface MockTab {
+  id: number;
+  url?: string;
+  pendingUrl?: string;
+  windowId: number;
+  active: boolean;
+  status: 'loading' | 'complete';
 }
 
 /**
@@ -39,6 +50,10 @@ export function setupMockChrome(): SetupMockChromeResult {
   let activeTabId: number | null = 1;
   let activeTabUrl = 'https://boards.greenhouse.io/stripe/jobs/987654';
   const nonScriptableTabs = new Set<number>();
+  // Tabs opened via chrome.tabs.create get ids well above the hand-picked ids tests use.
+  const createdTabs: MockTab[] = [];
+  let nextCreatedTabId = 1000;
+  const findCreatedTab = (tabId: number) => createdTabs.find((t) => t.id === tabId);
   const tabActivatedListeners: ((info: { tabId: number; windowId: number }) => any)[] = [];
   const tabUpdatedListeners: ((tabId: number, changeInfo: any, tab: any) => any)[] = [];
   const tabRemovedListeners: ((tabId: number, info: any) => any)[] = [];
@@ -204,6 +219,28 @@ export function setupMockChrome(): SetupMockChromeResult {
       query: vi.fn(async (_queryInfo: any) =>
         activeTabId === null ? [] : [{ id: activeTabId, url: activeTabUrl, windowId: 100 }]
       ),
+      create: vi.fn(async (createProperties: { url?: string; active?: boolean } = {}) => {
+        const tab: MockTab = {
+          id: nextCreatedTabId++,
+          url: createProperties.url,
+          pendingUrl: createProperties.url,
+          windowId: 100,
+          active: createProperties.active !== false,
+          status: 'loading',
+        };
+        createdTabs.push(tab);
+        if (tab.active) {
+          activeTabId = tab.id;
+          if (tab.url) activeTabUrl = tab.url;
+        }
+        return { ...tab };
+      }),
+      get: vi.fn(async (tabId: number) => {
+        const created = findCreatedTab(tabId);
+        if (created) return { ...created };
+        if (tabId === activeTabId) return { id: activeTabId, url: activeTabUrl, windowId: 100, active: true, status: 'complete' };
+        throw new Error(`No tab with id: ${tabId}.`);
+      }),
       sendMessage: vi.fn(async (tabId: number, msg: any) => {
         if (nonScriptableTabs.has(tabId)) {
           throw new Error('Could not establish connection. Receiving end does not exist.');
@@ -226,7 +263,10 @@ export function setupMockChrome(): SetupMockChromeResult {
         addListener: vi.fn((fn) => {
           tabUpdatedListeners.push(fn);
         }),
-        removeListener: vi.fn(),
+        removeListener: vi.fn((fn) => {
+          const idx = tabUpdatedListeners.indexOf(fn);
+          if (idx !== -1) tabUpdatedListeners.splice(idx, 1);
+        }),
       },
       onRemoved: {
         addListener: vi.fn((fn) => {
@@ -268,6 +308,8 @@ export function setupMockChrome(): SetupMockChromeResult {
     windowFocusListeners.length = 0;
     installedListeners.length = 0;
     nonScriptableTabs.clear();
+    createdTabs.length = 0;
+    nextCreatedTabId = 1000;
     activeTabId = 1;
   };
 
@@ -288,9 +330,15 @@ export function setupMockChrome(): SetupMockChromeResult {
   };
 
   const updateTab = async (tabId: number, changeInfo: any) => {
-    await Promise.all(
-      tabUpdatedListeners.map((fn) => fn(tabId, changeInfo, { id: tabId, url: activeTabUrl }))
-    );
+    // Created tabs track their own url/status so chrome.tabs.get reflects navigation.
+    const created = findCreatedTab(tabId);
+    if (created) {
+      if (changeInfo?.url) created.url = changeInfo.url;
+      if (changeInfo?.status) created.status = changeInfo.status;
+    }
+    const tab = created ? { ...created } : { id: tabId, url: activeTabUrl };
+    // Snapshot: a listener may remove itself while being notified.
+    await Promise.all([...tabUpdatedListeners].map((fn) => fn(tabId, changeInfo, tab)));
   };
 
   const removeTab = async (tabId: number) => {
@@ -326,5 +374,6 @@ export function setupMockChrome(): SetupMockChromeResult {
     updateTab,
     removeTab,
     sendFromTab,
+    createdTabs,
   };
 }

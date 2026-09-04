@@ -8,6 +8,7 @@ import {
   appendJobHistory,
 } from '../services/storage/tabJobStore';
 import { JobPosting } from '../types/job';
+import { handleLinkedInImportMessage } from './linkedinImport';
 
 /** Resolves the tab the user is currently looking at, if any. */
 async function getActiveTabId(): Promise<number | null> {
@@ -116,6 +117,12 @@ if (chrome.windows?.onFocusChanged) {
 
 // Message router between Content Scripts and Side Panel
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Side panel asking to import the user's own LinkedIn profile.
+  // IMPORT_LINKEDIN_PROFILE -> { success: boolean, profile?: ProfileImport, error?: string, tabId?: number }
+  if (message.type === 'IMPORT_LINKEDIN_PROFILE') {
+    return handleLinkedInImportMessage(message, sendResponse);
+  }
+
   // Content script reporting what it found on its page (automatic parsing).
   if (message.type === 'JOB_DETECTED' || message.type === 'NO_JOB_DETECTED') {
     const tabId = sender.tab?.id;

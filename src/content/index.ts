@@ -3,6 +3,7 @@ import { scraperRegistry } from './scrapers/scraperRegistry';
 import { FloatingButton } from './floatingButton';
 import { formFiller } from './autofill/formFiller';
 import { JobPosting } from '../types/job';
+import { isLinkedInProfileUrl, scrapeLinkedInProfile } from './linkedinProfile/linkedinProfileScraper';
 
 let floatingBtn: FloatingButton | null = null;
 let lastUrl = typeof window !== 'undefined' ? window.location.href : '';
@@ -168,6 +169,32 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       } else {
         sendResponse({ success: false, error: 'No job posting detected on current page' });
       }
+      return true;
+    }
+
+    // Contract 4: SCRAPE_LINKEDIN_PROFILE -> { success: boolean, profile?: ProfileImport, error?: string }
+    // Reads the signed-in user's own profile page (opened by the background
+    // worker at linkedin.com/in/me/) into a partial Candidate Profile.
+    if (message.type === 'SCRAPE_LINKEDIN_PROFILE') {
+      const currentUrl = window.location.href;
+      if (!isLinkedInProfileUrl(currentUrl)) {
+        sendResponse({ success: false, error: 'This tab is not a LinkedIn profile page.' });
+        return true;
+      }
+      const profile = scrapeLinkedInProfile(document, currentUrl);
+      // LinkedIn renders sections lazily; report "not ready" until something is
+      // there so the background worker can poll (details pages carry no name).
+      const hasData =
+        !!profile.contact?.name ||
+        !!profile.experiences?.length ||
+        !!profile.education?.length ||
+        !!profile.skills?.length ||
+        !!profile.certifications?.length;
+      if (!hasData) {
+        sendResponse({ success: false, error: 'LinkedIn profile has not finished rendering yet.' });
+        return true;
+      }
+      sendResponse({ success: true, profile });
       return true;
     }
 
