@@ -70,8 +70,9 @@ export function redistributeWeights(weights: FitWeights, applicable: Record<FitF
   return out;
 }
 
-function detectHardBlockers(profile: UserProfile, reqs: JobRequirements): string[] {
+function detectHardBlockers(profile: UserProfile, reqs: JobRequirements, profileYears: number): { blockers: string[]; isZeroFit: boolean } {
   const blockers: string[] = [];
+  let isZeroFit = false;
 
   if (reqs.requiresClearance) {
     const text = [...(profile.skills || []).map((s) => s.name), ...(profile.certifications || []).map((c) => c.name)].join('\n');
@@ -82,21 +83,54 @@ function detectHardBlockers(profile: UserProfile, reqs: JobRequirements): string
     blockers.push('Posting does not offer visa sponsorship');
   }
 
-  if (reqs.minDegree && reqs.degreeRequired) {
-    const studentLevel = reqs.roleLevel === 'internship' || reqs.roleLevel === 'new_grad';
-    const have = highestDegreeRank(profile, studentLevel);
+  const studentLevel = reqs.roleLevel === 'internship' || reqs.roleLevel === 'new_grad';
+  const attainedRank = highestDegreeRank(profile, studentLevel);
+  const anyRank = highestDegreeRank(profile, true);
+  const highestLevel = anyRank >= 0 ? degreeLevelForRank(anyRank) : undefined;
+  const isGraduateCandidate = anyRank >= DEGREE_RANK.master;
+
+  if (reqs.minDegree && (reqs.degreeRequired || DEGREE_RANK[reqs.minDegree] >= DEGREE_RANK.master)) {
     const minRank = DEGREE_RANK[reqs.minDegree];
-    if (minRank > have) {
-      const anyRank = highestDegreeRank(profile, true);
-      const minLabel = DEGREE_LABEL[reqs.minDegree];
-      if (anyRank >= minRank) {
+    const minLabel = DEGREE_LABEL[reqs.minDegree];
+    if (minRank > attainedRank) {
+      if (anyRank >= minRank && !studentLevel) {
         blockers.push(`Requires a completed ${minLabel} degree (yours is still in progress)`);
       } else {
-        const haveLevel = anyRank >= 0 ? degreeLevelForRank(anyRank) : undefined;
-        const inProgress = anyRank > have ? ' in progress' : '';
-        blockers.push(`Requires a ${minLabel} degree (your highest: ${haveLevel ? DEGREE_LABEL[haveLevel] + inProgress : 'none listed'})`);
+        const haveLabel = highestLevel ? DEGREE_LABEL[highestLevel] : 'none listed';
+        const inProgress = anyRank > attainedRank ? ' in progress' : '';
+        blockers.push(`Requires a ${minLabel} degree (your highest: ${haveLabel}${inProgress})`);
+      }
+
+      if (minRank >= DEGREE_RANK.master && anyRank < DEGREE_RANK.master) {
+        isZeroFit = true;
       }
     }
+  }
+
+  if (reqs.undergradOnly && isGraduateCandidate) {
+    const haveLabel = highestLevel ? DEGREE_LABEL[highestLevel] : 'graduate level';
+    blockers.push(`Role is restricted to undergraduate students (your degree is ${haveLabel})`);
+    isZeroFit = true;
+  }
+
+  if (reqs.graduationWindow) {
+    const { maxYear } = reqs.graduationWindow;
+    const inProgress = (profile.education || []).filter((e) => e.status === 'in_progress' && e.graduationYear);
+    const dated = (profile.education || []).filter((e) => e.graduationYear);
+    const pick = inProgress[0] || dated.sort((a, b) => (b.graduationYear || 0) - (a.graduationYear || 0))[0];
+    const gradYear = pick?.graduationYear;
+    if (gradYear !== undefined && gradYear > maxYear) {
+      blockers.push(`Graduation year (${gradYear}) is after the job requirement deadline (${maxYear})`);
+      isZeroFit = true;
+    }
+  }
+
+  const isSeniorJob = reqs.roleLevel === 'senior' || reqs.roleLevel === 'lead' || (reqs.requiredYears !== undefined && reqs.requiredYears >= 5);
+  const isStudentOrEntry = profileYears < 1.0;
+  if (isSeniorJob && isStudentOrEntry) {
+    const levelLabel = reqs.roleLevel !== 'unknown' ? reqs.roleLevel : `${reqs.requiredYears}+ years`;
+    blockers.push(`Posting requires a ${levelLabel} level of experience (~${profileYears.toFixed(1)} years listed on profile)`);
+    isZeroFit = true;
   }
 
   const wanted: EmploymentPreference[] = profile.story?.employmentTypes || [];
@@ -105,7 +139,7 @@ function detectHardBlockers(profile: UserProfile, reqs: JobRequirements): string
     else blockers.push(`${EMPLOYMENT_LABEL[reqs.employmentType]} role, but your preferences only include: ${wanted.map((w) => EMPLOYMENT_LABEL[w]).join(', ')}`);
   }
 
-  return blockers;
+  return { blockers, isZeroFit };
 }
 
 function assessConfidence(profile: UserProfile, job: JobPosting, reqs: JobRequirements): FitConfidence {
@@ -179,9 +213,10 @@ export function calculateBestFit(job: JobPosting, profile: UserProfile, weights?
     gaps: [...outcomes[key].gaps],
   }));
 
-  const hardBlockers = detectHardBlockers(profile, reqs);
+  const { blockers: hardBlockers, isZeroFit } = detectHardBlockers(profile, reqs, ctx.profileYears);
   let fitPercent = clamp(Math.round(factors.reduce((sum, f) => sum + (f.score * f.weight) / 100, 0)));
-  if (hardBlockers.length > 0) fitPercent = Math.min(fitPercent, HARD_BLOCKER_CAP);
+  if (isZeroFit) fitPercent = 0;
+  else if (hardBlockers.length > 0) fitPercent = Math.min(fitPercent, HARD_BLOCKER_CAP);
 
   const byWeight = factors.filter((f) => f.applicable).sort((a, b) => b.weight - a.weight || FIT_FACTOR_ORDER.indexOf(a.key) - FIT_FACTOR_ORDER.indexOf(b.key));
   const strengths = pickRoundRobin(

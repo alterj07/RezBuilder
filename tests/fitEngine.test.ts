@@ -159,7 +159,7 @@ describe('calculateBestFit — weight redistribution', () => {
   });
 
   it('honours weight overrides — all weight on skills reproduces the skills score', () => {
-    const r = calculateBestFit(MOCK_SENIOR_BACKEND_JOB, MOCK_STUDENT_PROFILE, {
+    const r = calculateBestFit(MOCK_SENIOR_BACKEND_JOB, MOCK_SENIOR_PROFILE, {
       skills: 100,
       experience: 0,
       education: 0,
@@ -200,7 +200,7 @@ describe('calculateBestFit — hard blockers', () => {
   it('flags a required Master\'s for a Bachelor\'s holder', () => {
     const r = calculateBestFit(MOCK_MASTERS_REQUIRED_JOB, MOCK_SENIOR_PROFILE);
     expect(r.hardBlockers).toContain("Requires a Master's degree (your highest: Bachelor's)");
-    expect(r.fitPercent).toBeLessThanOrEqual(HARD_BLOCKER_CAP);
+    expect(r.fitPercent).toBe(0);
   });
 
   it('does not flag a degree that is merely preferred / "or equivalent experience"', () => {
@@ -223,7 +223,7 @@ describe('calculateBestFit — hard blockers', () => {
     expect(seniorOnIntern.fitPercent).toBeLessThanOrEqual(HARD_BLOCKER_CAP);
     const studentOnFullTime = calculateBestFit(MOCK_SENIOR_BACKEND_JOB, MOCK_STUDENT_PROFILE);
     expect(studentOnFullTime.hardBlockers).toContain('Full-time role, but your preferences only include: Internship');
-    const open = clone(MOCK_STUDENT_PROFILE);
+    const open = clone(MOCK_SENIOR_PROFILE);
     open.story.employmentTypes = [];
     expect(calculateBestFit(MOCK_SENIOR_BACKEND_JOB, open).hardBlockers).toEqual([]);
   });

@@ -80,7 +80,9 @@ export function checkProfileCompleteness(profile: UserProfile | null | undefined
   }
 
   // Experiences — 25, scaled by min(count, 2) / 2. Projects count.
-  const validExperiences = (profile.experiences || []).filter((x) => hasText(x.company) && hasText(x.title));
+  const validExperiences = (profile.experiences || []).filter((x) =>
+    x.type === 'project' ? hasText(x.title) : hasText(x.company) && hasText(x.title)
+  );
   const experienceCount = validExperiences.length;
   score +=
     WEIGHTS.experiences *

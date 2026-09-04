@@ -7,6 +7,7 @@ import { ResumesTab } from '../src/sidepanel/tabs/ResumesTab';
 import { TailorTab } from '../src/sidepanel/tabs/TailorTab';
 import { InterviewTab } from '../src/sidepanel/tabs/InterviewTab';
 import { SettingsTab } from '../src/sidepanel/tabs/SettingsTab';
+import { ExperienceForm } from '../src/components/profile/ExperienceForm';
 import { FloatingButton } from '../src/content/floatingButton';
 import { JobPosting } from '../src/types/job';
 import { TailoredResume } from '../src/types/resume';
@@ -495,6 +496,40 @@ describe('Extension UI & Tab Components Suite', () => {
       expect(host?.shadowRoot?.textContent).toContain('Not Detected');
 
       fab.unmount();
+    });
+  });
+
+  describe('8. ExperienceForm Component (src/components/profile/ExperienceForm.tsx)', () => {
+    it('should render distinct Add experience and Add project buttons and format labels accordingly', async () => {
+      const onChange = vi.fn();
+      const dom = await renderComponent(
+        <ExperienceForm
+          entries={[
+            {
+              id: 'exp_1',
+              title: 'Software Engineer',
+              company: 'Acme Corp',
+              type: 'full_time',
+              bullets: [],
+            },
+            {
+              id: 'exp_2',
+              title: 'Portfolio Site',
+              company: 'Personal',
+              type: 'project',
+              bullets: [],
+            },
+          ]}
+          onChange={onChange}
+        />
+      );
+
+      expect(dom.textContent).toContain('Experience 1');
+      expect(dom.textContent).toContain('Project 1');
+      expect(dom.textContent).toContain('Company / organization');
+      expect(dom.textContent).toContain('Project Name');
+      expect(dom.textContent).toContain('Add experience');
+      expect(dom.textContent).toContain('Add project');
     });
   });
 });

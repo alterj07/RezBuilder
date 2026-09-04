@@ -29,6 +29,7 @@ export interface JobRequirements {
   minDegree?: DegreeLevel;
   /** True when the degree is worded as a hard requirement (not "preferred" / "or equivalent experience"). */
   degreeRequired: boolean;
+  undergradOnly: boolean;
   roleLevel: RoleLevel;
   graduationWindow?: GraduationWindow;
   requiresClearance: boolean;
@@ -205,6 +206,10 @@ const GRAD_RANGE_RE = new RegExp(
   `(?:graduat\\w*|class\\s+of)[^.]{0,60}?\\b(?:${MONTH_WORD}\\s+)?(20\\d{2})\\s*(?:-|–|—|to|and|through|or)\\s*(?:${MONTH_WORD}\\s+)?(20\\d{2})`,
   'i',
 );
+const GRAD_BEFORE_RE = new RegExp(
+  `(?:graduat\\w*|class\\s+of)[^.]{0,60}?\\b(?:before|by|prior\\s+to|no\\s+later\\s+than)\\s+(?:${MONTH_WORD}\\s+)?(20\\d{2})`,
+  'i',
+);
 const GRAD_SINGLE_RE = new RegExp(`(?:graduat\\w*|class\\s+of)[^.]{0,40}?\\b(?:${MONTH_WORD}\\s+)?(20\\d{2})\\b`, 'i');
 const RISING_RE = /\brising\s+(sophomore|junior|senior)s?\b/i;
 const SEASON_YEAR_RE = /\b(?:summer|spring|fall|autumn|winter)\s+(?:of\s+)?(20\d{2})\b/i;
@@ -224,6 +229,11 @@ function detectGraduationWindow(text: string, job: JobPosting): GraduationWindow
     const a = parseInt(range[1], 10);
     const b = parseInt(range[2], 10);
     if (plausible(a) && plausible(b)) return { minYear: Math.min(a, b), maxYear: Math.max(a, b) };
+  }
+  const before = text.match(GRAD_BEFORE_RE);
+  if (before) {
+    const y = parseInt(before[1], 10);
+    if (plausible(y)) return { minYear: scrapedYear, maxYear: y };
   }
   const single = text.match(GRAD_SINGLE_RE);
   if (single) {
@@ -408,6 +418,9 @@ export function extractJobRequirements(job: JobPosting): JobRequirements {
   const roleLevel = detectRoleLevel(job, fullText, pursuing, graduationWindow, requiredYears);
 
   // ----- blockers -----
+  const UNDERGRAD_ONLY_RE = /\b(?:undergraduates?|undergraduate\s+students?|bachelor(?:'s)?\s+students?)\s+only\b|\bmust\b[^.]{0,50}?\b(?:currently\s+enrolled\s+in\s+a|pursuing\s+a)\s+bachelor(?:'s)?\s+degree\b|\bopen\s+only\s+to\s+undergraduates?\b|\bnot\s+open\s+to\s+graduate\s+(?:students?|degrees?)\b|\bundergraduate\s+(?:degree\s+)?program\s+only\b|\bbachelor(?:'s)?\s+(?:candidates|students)\s+only\b/i;
+  const undergradOnly = UNDERGRAD_ONLY_RE.test(fullText);
+
   const requiresClearance = CLEARANCE_RE.test(fullText) && !CLEARANCE_NEGATION_RE.test(fullText);
   const requiresSponsorshipUnavailable = NO_SPONSORSHIP_RE.test(fullText);
 
@@ -426,6 +439,7 @@ export function extractJobRequirements(job: JobPosting): JobRequirements {
     requiredYears,
     minDegree,
     degreeRequired,
+    undergradOnly,
     roleLevel,
     graduationWindow,
     requiresClearance,

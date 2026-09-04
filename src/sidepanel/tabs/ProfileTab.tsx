@@ -184,7 +184,7 @@ function stepIssues(step: StepKey, profile: UserProfile): string[] {
     case "experiences": {
       if (profile.experiences.length === 0)
         return [
-          "Add at least one experience or project with an organization and title",
+          "Add at least one experience or project",
         ];
       const issues: string[] = [];
       profile.experiences.forEach((entry, idx) => {
@@ -192,7 +192,7 @@ function stepIssues(step: StepKey, profile: UserProfile): string[] {
         const parts = [errors.company, errors.title].filter(Boolean);
         if (parts.length > 0)
           issues.push(
-            `Experience ${idx + 1}: ${parts.join(", ").toLowerCase()}`,
+            `${entry.type === 'project' ? 'Project' : 'Experience'} ${idx + 1}: ${parts.join(", ").toLowerCase()}`,
           );
       });
       return issues;
@@ -1074,8 +1074,14 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               {draft.experiences.map((x) => (
                 <li key={x.id} className="text-[11px]">
                   <div className="text-surface-200 font-medium">
-                    {x.title} <span className="text-surface-500">·</span>{" "}
-                    <span className="text-brand-300">{x.company}</span>
+                    {x.title}
+                    {x.company ? (
+                      <>
+                        {" "}
+                        <span className="text-surface-500">·</span>{" "}
+                        <span className="text-brand-300">{x.company}</span>
+                      </>
+                    ) : null}
                     {x.type && (
                       <span className="ml-1.5 text-[10px] font-mono text-surface-500">
                         {

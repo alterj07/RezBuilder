@@ -103,7 +103,9 @@ export const BestFitCard: React.FC<BestFitCardProps> = ({ result }) => {
             </div>
           ))}
           <p className="text-[10px] text-rose-300/80 leading-snug">
-            Score capped at {HARD_BLOCKER_CAP}% because of a hard requirement
+            {percent === 0
+              ? 'Score is 0% because of requirement mismatch'
+              : `Score capped at ${HARD_BLOCKER_CAP}% because of a hard requirement`}
           </p>
         </div>
       )}

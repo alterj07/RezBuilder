@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, Briefcase, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Briefcase, FolderGit2, AlertCircle } from 'lucide-react';
 import { ExperienceType, ProfileExperience } from '../../types/profile';
 import { createProfileEntityId } from '../../services/profile';
 import { TagInput } from './TagInput';
@@ -34,20 +34,24 @@ export const EXPERIENCE_TYPE_OPTIONS: { value: ExperienceType; label: string }[]
   { value: 'project', label: 'Project' },
 ];
 
-export function createExperienceEntry(): ProfileExperience {
+export function createExperienceEntry(type: ExperienceType = 'full_time'): ProfileExperience {
   return {
     id: createProfileEntityId('exp'),
     company: '',
     title: '',
-    type: 'full_time',
+    type,
     bullets: [],
   };
 }
 
 export function experienceEntryErrors(entry: ProfileExperience): { company?: string; title?: string } {
   const errors: { company?: string; title?: string } = {};
-  if (!entry.company.trim()) errors.company = 'Organization is required';
-  if (!entry.title.trim()) errors.title = 'Title is required';
+  if (entry.type === 'project') {
+    if (!entry.title.trim()) errors.title = 'Project name is required';
+  } else {
+    if (!entry.company.trim()) errors.company = 'Organization is required';
+    if (!entry.title.trim()) errors.title = 'Title is required';
+  }
   return errors;
 }
 
@@ -62,16 +66,24 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
   const update = (id: string, patch: Partial<ProfileExperience>) =>
     onChange(entries.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   const remove = (id: string) => onChange(entries.filter((e) => e.id !== id));
-  const add = () => onChange([...entries, createExperienceEntry()]);
+  const add = (type: ExperienceType = 'full_time') => onChange([...entries, createExperienceEntry(type)]);
+
+  let workCount = 0;
+  let projectCount = 0;
 
   return (
     <div className="space-y-3">
       {entries.length === 0 && (
         <div className="p-3 rounded-lg border border-dashed border-surface-800 text-center text-[11px] text-surface-500">
-          No experiences yet. Jobs, internships, research and personal projects all count.
+          No experiences or projects yet. Jobs, internships, research, and personal projects all count.
         </div>
       )}
       {entries.map((entry, idx) => {
+        const isProject = entry.type === 'project';
+        if (isProject) projectCount++;
+        else workCount++;
+        const itemNumber = isProject ? projectCount : workCount;
+
         const errors = showValidation ? experienceEntryErrors(entry) : {};
         const startBad = !!entry.startDate && !DATE_PATTERN.test(entry.startDate);
         const endBad = !!entry.endDate && !DATE_PATTERN.test(entry.endDate);
@@ -79,12 +91,16 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
           <div key={entry.id} className={cardClass} data-testid={`experience-entry-${idx}`}>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-surface-300 flex items-center gap-1">
-                <Briefcase className="w-3.5 h-3.5 text-brand-400" />
-                Experience {idx + 1}
+                {isProject ? (
+                  <FolderGit2 className="w-3.5 h-3.5 text-brand-400" />
+                ) : (
+                  <Briefcase className="w-3.5 h-3.5 text-brand-400" />
+                )}
+                {isProject ? `Project ${itemNumber}` : `Experience ${itemNumber}`}
               </span>
               <button
                 type="button"
-                aria-label="Remove experience"
+                aria-label="Remove entry"
                 data-testid={`experience-remove-${idx}`}
                 onClick={() => remove(entry.id)}
                 className="p-1 rounded text-surface-500 hover:text-rose-400 hover:bg-rose-500/10"
@@ -96,30 +112,36 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className={labelClass}>
-                  Company / organization<span className="text-rose-400 ml-0.5">*</span>
+                  {isProject ? 'Project Name' : 'Company / organization'}
+                  <span className="text-rose-400 ml-0.5">*</span>
                 </label>
                 <input
                   type="text"
-                  data-testid={`experience-company-${idx}`}
-                  value={entry.company}
-                  placeholder="CloudScale Inc"
-                  aria-invalid={!!errors.company || undefined}
-                  onChange={(e) => update(entry.id, { company: e.target.value })}
-                  className={`${inputClass} ${errors.company ? inputErrorClass : ''}`}
+                  data-testid={isProject ? `project-name-${idx}` : `experience-company-${idx}`}
+                  value={isProject ? entry.title : entry.company}
+                  placeholder={isProject ? 'AI Resume Builder' : 'CloudScale Inc'}
+                  aria-invalid={isProject ? !!errors.title || undefined : !!errors.company || undefined}
+                  onChange={(e) =>
+                    update(entry.id, isProject ? { title: e.target.value } : { company: e.target.value })
+                  }
+                  className={`${inputClass} ${(isProject ? errors.title : errors.company) ? inputErrorClass : ''}`}
                 />
               </div>
               <div>
                 <label className={labelClass}>
-                  Title<span className="text-rose-400 ml-0.5">*</span>
+                  {isProject ? 'Organization / Context (Optional)' : 'Title'}
+                  {!isProject && <span className="text-rose-400 ml-0.5">*</span>}
                 </label>
                 <input
                   type="text"
-                  data-testid={`experience-title-${idx}`}
-                  value={entry.title}
-                  placeholder="Software Engineer"
-                  aria-invalid={!!errors.title || undefined}
-                  onChange={(e) => update(entry.id, { title: e.target.value })}
-                  className={`${inputClass} ${errors.title ? inputErrorClass : ''}`}
+                  data-testid={isProject ? `experience-company-${idx}` : `experience-title-${idx}`}
+                  value={isProject ? entry.company : entry.title}
+                  placeholder={isProject ? 'Personal / CS 410' : 'Software Engineer'}
+                  aria-invalid={!isProject ? !!errors.title || undefined : undefined}
+                  onChange={(e) =>
+                    update(entry.id, isProject ? { company: e.target.value } : { title: e.target.value })
+                  }
+                  className={`${inputClass} ${!isProject && errors.title ? inputErrorClass : ''}`}
                 />
               </div>
             </div>
@@ -196,7 +218,7 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                 }
                 className="accent-brand-500"
               />
-              I currently work here
+              {isProject ? 'I am currently working on this project' : 'I currently work here'}
             </label>
 
             <div>
@@ -226,10 +248,26 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
         );
       })}
 
-      <button type="button" data-testid="experience-add" onClick={add} className={secondaryButtonClass}>
-        <Plus className="w-3.5 h-3.5" />
-        Add experience or project
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          data-testid="experience-add"
+          onClick={() => add('full_time')}
+          className={`${secondaryButtonClass} flex-1`}
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add experience
+        </button>
+        <button
+          type="button"
+          data-testid="project-add"
+          onClick={() => add('project')}
+          className={`${secondaryButtonClass} flex-1`}
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add project
+        </button>
+      </div>
     </div>
   );
 };
