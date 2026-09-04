@@ -14,6 +14,7 @@ import { interviewService } from '../src/services/interview/interviewService';
 import { JobPosting } from '../src/types/job';
 import { Resume } from '../src/types/resume';
 import { MOCK_SENIOR_FULLSTACK_RESUME } from './fixtures/mockResumes';
+import { MOCK_SENIOR_PROFILE } from './fixtures/mockProfiles';
 import { setupMockChrome } from './helpers/mockChrome';
 
 describe('Adversarial UI & Runtime Integration Suite (Milestone 3 Quality Gate)', () => {
@@ -23,6 +24,8 @@ describe('Adversarial UI & Runtime Integration Suite (Milestone 3 Quality Gate)'
 
   beforeEach(() => {
     mockHarness = setupMockChrome();
+    // A complete Candidate Profile unlocks the Job / Tailor / Prep tabs.
+    mockHarness.store.local.rezbuilder_profile = MOCK_SENIOR_PROFILE;
     container = document.createElement('div');
     container.id = 'root';
     document.body.appendChild(container);
@@ -72,6 +75,7 @@ describe('Adversarial UI & Runtime Integration Suite (Milestone 3 Quality Gate)'
       const dom = await renderToDom(
         <JobTab
           job={malformedJob}
+          profile={MOCK_SENIOR_PROFILE}
           resumes={[MOCK_SENIOR_FULLSTACK_RESUME]}
           activeResume={MOCK_SENIOR_FULLSTACK_RESUME}
           onSelectResume={vi.fn()}
@@ -101,6 +105,7 @@ describe('Adversarial UI & Runtime Integration Suite (Milestone 3 Quality Gate)'
       const dom = await renderToDom(
         <JobTab
           job={xssJob}
+          profile={MOCK_SENIOR_PROFILE}
           resumes={[MOCK_SENIOR_FULLSTACK_RESUME]}
           activeResume={MOCK_SENIOR_FULLSTACK_RESUME}
           onSelectResume={vi.fn()}
@@ -133,6 +138,7 @@ describe('Adversarial UI & Runtime Integration Suite (Milestone 3 Quality Gate)'
       const dom = await renderToDom(
         <JobTab
           job={massiveJob}
+          profile={MOCK_SENIOR_PROFILE}
           resumes={[MOCK_SENIOR_FULLSTACK_RESUME]}
           activeResume={MOCK_SENIOR_FULLSTACK_RESUME}
           onSelectResume={vi.fn()}
@@ -389,7 +395,7 @@ describe('Adversarial UI & Runtime Integration Suite (Milestone 3 Quality Gate)'
   });
 
   describe('7. Sidepanel App Tab Navigation & Interaction', () => {
-    it('should switch across all 5 navigation tabs cleanly', async () => {
+    it('should switch across all 6 navigation tabs cleanly', async () => {
       const dom = await renderToDom(
         <ErrorBoundary>
           <App />
@@ -397,35 +403,35 @@ describe('Adversarial UI & Runtime Integration Suite (Milestone 3 Quality Gate)'
       );
 
       const navButtons = dom.querySelectorAll('nav button');
-      expect(navButtons.length).toBe(5);
+      expect(navButtons.length).toBe(6);
 
       // Resumes tab
       await act(async () => {
-        (navButtons[1] as HTMLButtonElement).click();
+        (navButtons[2] as HTMLButtonElement).click();
       });
       expect(dom.textContent).toContain('Stored Resumes');
 
       // Tailor tab
       await act(async () => {
-        (navButtons[2] as HTMLButtonElement).click();
+        (navButtons[3] as HTMLButtonElement).click();
       });
       expect(dom.textContent).toContain('Deterministic ATS Customization');
 
       // Interview / Prep tab
       await act(async () => {
-        (navButtons[3] as HTMLButtonElement).click();
+        (navButtons[4] as HTMLButtonElement).click();
       });
       expect(dom.textContent).toContain('AI Interview Prep Briefing');
 
       // Settings tab
       await act(async () => {
-        (navButtons[4] as HTMLButtonElement).click();
+        (navButtons[5] as HTMLButtonElement).click();
       });
       expect(dom.textContent).toContain('Extension Settings & Engine Mode');
 
       // Return to Job tab
       await act(async () => {
-        (navButtons[0] as HTMLButtonElement).click();
+        (navButtons[1] as HTMLButtonElement).click();
       });
       expect(dom.textContent).toContain('Active Job Posting');
     });

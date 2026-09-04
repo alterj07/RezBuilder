@@ -11,6 +11,7 @@ import { TailorTab } from '../src/sidepanel/tabs/TailorTab';
 import { InterviewTab } from '../src/sidepanel/tabs/InterviewTab';
 import { resumeStorage } from '../src/services/storage/resumeStorage';
 import { settingsStorage } from '../src/services/storage/settingsStorage';
+import { MOCK_SENIOR_PROFILE } from './fixtures/mockProfiles';
 import { setupMockChrome } from './helpers/mockChrome';
 import { MOCK_SENIOR_FULLSTACK_RESUME } from './fixtures/mockResumes';
 import { Resume } from '../src/types/resume';
@@ -22,6 +23,8 @@ describe('Milestone 3 — Adversarial Stress Testing & CSP Compliance Suite', ()
 
   beforeEach(() => {
     mockHarness = setupMockChrome();
+    // A complete Candidate Profile unlocks the Job / Tailor / Prep tabs.
+    mockHarness.store.local.rezbuilder_profile = MOCK_SENIOR_PROFILE;
     container = document.createElement('div');
     container.id = 'root';
     document.body.appendChild(container);
@@ -273,7 +276,7 @@ describe('Milestone 3 — Adversarial Stress Testing & CSP Compliance Suite', ()
   // 3. React App & Tab Lifecycle Stress Testing
   // =========================================================================
   describe('3. React App & Tab Lifecycle Stress Testing', () => {
-    it('survives rapid tab transitions across all 5 navigation tabs without error', async () => {
+    it('survives rapid tab transitions across all 6 navigation tabs without error', async () => {
       const dom = await renderComponent(
         <ErrorBoundary>
           <App />
@@ -281,7 +284,7 @@ describe('Milestone 3 — Adversarial Stress Testing & CSP Compliance Suite', ()
       );
 
       const navButtons = Array.from(dom.querySelectorAll('nav button')) as HTMLButtonElement[];
-      expect(navButtons.length).toBe(5);
+      expect(navButtons.length).toBe(6);
 
       // Rapidly click every tab multiple times
       for (let cycle = 0; cycle < 3; cycle++) {
@@ -347,6 +350,7 @@ describe('Milestone 3 — Adversarial Stress Testing & CSP Compliance Suite', ()
       let dom = await renderComponent(
         <JobTab
           job={null}
+          profile={null}
           resumes={[]}
           activeResume={null}
           onSelectResume={vi.fn()}

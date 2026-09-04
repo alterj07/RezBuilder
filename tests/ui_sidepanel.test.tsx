@@ -12,6 +12,7 @@ import { DiffViewer } from '../src/components/tailor/DiffViewer';
 import { JobPosting } from '../src/types/job';
 import { TailoredResume } from '../src/types/resume';
 import { MOCK_SENIOR_FULLSTACK_RESUME, MOCK_JUNIOR_FRONTEND_RESUME } from './fixtures/mockResumes';
+import { MOCK_SENIOR_PROFILE } from './fixtures/mockProfiles';
 import { setupMockChrome } from './helpers/mockChrome';
 
 const MOCK_JOB_FIXTURE: JobPosting = {
@@ -55,6 +56,8 @@ describe('Sidepanel UI & Runtime Resilience Test Suite', () => {
 
   beforeEach(() => {
     mockHarness = setupMockChrome();
+    // A complete Candidate Profile unlocks the Job / Tailor / Prep tabs.
+    mockHarness.store.local.rezbuilder_profile = MOCK_SENIOR_PROFILE;
     container = document.createElement('div');
     container.id = 'root';
     document.body.appendChild(container);
@@ -165,6 +168,7 @@ describe('Sidepanel UI & Runtime Resilience Test Suite', () => {
       const dom = await renderToDom(
         <JobTab
           job={jobWithUndefinedSkills}
+          profile={MOCK_SENIOR_PROFILE}
           resumes={[MOCK_SENIOR_FULLSTACK_RESUME]}
           activeResume={MOCK_SENIOR_FULLSTACK_RESUME}
           onSelectResume={vi.fn()}
@@ -184,6 +188,7 @@ describe('Sidepanel UI & Runtime Resilience Test Suite', () => {
       const dom = await renderToDom(
         <JobTab
           job={MOCK_JOB_FIXTURE}
+          profile={MOCK_SENIOR_PROFILE}
           resumes={[MOCK_SENIOR_FULLSTACK_RESUME, MOCK_JUNIOR_FRONTEND_RESUME]}
           activeResume={MOCK_SENIOR_FULLSTACK_RESUME}
           onSelectResume={vi.fn()}
@@ -310,7 +315,7 @@ describe('Sidepanel UI & Runtime Resilience Test Suite', () => {
       );
 
       expect(dom.textContent).toContain('RezBuilder');
-      expect(dom.textContent).toContain('AI Job-Application Copilot');
+      expect(dom.textContent).toContain('Local Job-Application Copilot');
       expect(dom.querySelector('nav')).not.toBeNull();
     });
   });

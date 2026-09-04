@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Briefcase,
   FileText,
@@ -7,21 +7,28 @@ import {
   Settings,
   ShieldCheck,
   Zap,
+  UserCircle2,
 } from 'lucide-react';
 import { JobPosting } from '../types/job';
 import { Resume, TailoredResume } from '../types/resume';
+import { UserProfile } from '../types/profile';
 import { resumeStorage } from '../services/storage/resumeStorage';
+import { profileStorage, PROFILE_STORAGE_KEY } from '../services/storage/profileStorage';
+import { checkProfileCompleteness } from '../services/profile/completeness';
+import { ProfileGateCard } from '../components/profile/ProfileGateCard';
+import { ProfileTab } from './tabs/ProfileTab';
 import { JobTab } from './tabs/JobTab';
 import { ResumesTab } from './tabs/ResumesTab';
 import { TailorTab } from './tabs/TailorTab';
 import { InterviewTab } from './tabs/InterviewTab';
 import { SettingsTab } from './tabs/SettingsTab';
 
-export type TabType = 'job' | 'resumes' | 'tailor' | 'interview' | 'settings';
+export type TabType = 'profile' | 'job' | 'resumes' | 'tailor' | 'interview' | 'settings';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('job');
   const [job, setJob] = useState<JobPosting | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null);
   const [tailoredResume, setTailoredResume] = useState<TailoredResume | null>(null);
@@ -30,6 +37,13 @@ export default function App() {
 
   // Load initial data
   const loadData = async () => {
+    // 0. Candidate Profile — decides whether the panel opens on onboarding.
+    const storedProfile = await profileStorage.getProfile();
+    setProfile(storedProfile);
+    if (!checkProfileCompleteness(storedProfile).isComplete) {
+      setActiveTab('profile');
+    }
+
     // 1. Resumes
     const storedResumes = await resumeStorage.getAllResumes();
     setResumes(storedResumes);
@@ -81,6 +95,10 @@ export default function App() {
           }
           if (changes.activeTailoredResume) {
             setTailoredResume(changes.activeTailoredResume.newValue || null);
+          }
+          if (changes[PROFILE_STORAGE_KEY]) {
+            const next = changes[PROFILE_STORAGE_KEY].newValue;
+            setProfile(next && typeof next === 'object' ? (next as UserProfile) : null);
           }
         }
       };
@@ -175,12 +193,16 @@ export default function App() {
 
   const handleDataCleared = () => {
     setJob(null);
+    setProfile(null);
     setResumes([]);
     setActiveResumeId(null);
     setTailoredResume(null);
   };
 
   const activeResume = resumes.find((r) => r.id === activeResumeId) || resumes[0] || null;
+  const completeness = useMemo(() => checkProfileCompleteness(profile), [profile]);
+  const profileGate = !completeness.isComplete;
+  const gate = <ProfileGateCard completeness={completeness} onGoToProfile={() => setActiveTab('profile')} />;
 
   return (
     <div className="flex flex-col h-screen w-full bg-surface-950 text-surface-100 overflow-hidden font-sans select-none">
@@ -197,7 +219,7 @@ export default function App() {
                 v1.0
               </span>
             </h1>
-            <p className="text-[10px] text-surface-400 font-mono mt-0.5">AI Job-Application Copilot</p>
+            <p className="text-[10px] text-surface-400 font-mono mt-0.5">Local Job-Application Copilot</p>
           </div>
         </div>
 
@@ -212,8 +234,28 @@ export default function App() {
         </div>
       </header>
 
-      {/* Modern 5-Tab Navigation Bar */}
+      {/* Navigation Bar */}
       <nav className="flex items-center px-2 py-1.5 bg-surface-900 border-b border-surface-800 shrink-0 gap-1">
+        <button
+          onClick={() => setActiveTab('profile')}
+          data-testid="nav-profile"
+          className={`relative flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+            activeTab === 'profile'
+              ? 'bg-surface-800 text-white shadow-sm border border-surface-700/60'
+              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-850'
+          }`}
+        >
+          <UserCircle2 className="w-3.5 h-3.5" />
+          <span>Profile</span>
+          {profileGate && (
+            <span
+              data-testid="profile-incomplete-badge"
+              className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400"
+              title="Profile incomplete"
+            />
+          )}
+        </button>
+
         <button
           onClick={() => setActiveTab('job')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
@@ -282,9 +324,15 @@ export default function App() {
 
       {/* Main Tab Content Area */}
       <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-        {activeTab === 'job' && (
+        {activeTab === 'profile' && (
+          <ProfileTab profile={profile} resumes={resumes} onProfileSaved={setProfile} />
+        )}
+
+        {activeTab === 'job' && profileGate && gate}
+        {activeTab === 'job' && !profileGate && (
           <JobTab
             job={job}
+            profile={profile}
             resumes={resumes}
             activeResume={activeResume}
             onSelectResume={handleSelectResume}
@@ -307,7 +355,8 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'tailor' && (
+        {activeTab === 'tailor' && profileGate && gate}
+        {activeTab === 'tailor' && !profileGate && (
           <TailorTab
             job={job}
             resumes={resumes}
@@ -315,10 +364,12 @@ export default function App() {
             onSelectResume={handleSelectResume}
             tailoredResume={tailoredResume}
             onSaveTailoredResume={handleSaveTailoredResume}
+            profile={profile}
           />
         )}
 
-        {activeTab === 'interview' && (
+        {activeTab === 'interview' && profileGate && gate}
+        {activeTab === 'interview' && !profileGate && (
           <InterviewTab job={job} activeResume={activeResume} />
         )}
 

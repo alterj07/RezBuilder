@@ -11,6 +11,7 @@ import { FloatingButton } from '../src/content/floatingButton';
 import { JobPosting } from '../src/types/job';
 import { TailoredResume } from '../src/types/resume';
 import { MOCK_SENIOR_FULLSTACK_RESUME, MOCK_JUNIOR_FRONTEND_RESUME } from './fixtures/mockResumes';
+import { MOCK_SENIOR_PROFILE } from './fixtures/mockProfiles';
 import { setupMockChrome } from './helpers/mockChrome';
 
 const MOCK_JOB: JobPosting = {
@@ -57,6 +58,8 @@ describe('Extension UI & Tab Components Suite', () => {
 
   beforeEach(() => {
     mockHarness = setupMockChrome();
+    // A complete Candidate Profile unlocks the Job / Tailor / Prep tabs.
+    mockHarness.store.local.rezbuilder_profile = MOCK_SENIOR_PROFILE;
     container = document.createElement('div');
     container.id = 'root';
     document.body.appendChild(container);
@@ -92,39 +95,39 @@ describe('Extension UI & Tab Components Suite', () => {
     it('should mount App without throwing exceptions and display header branding', async () => {
       const dom = await renderComponent(<App />);
       expect(dom.textContent).toContain('RezBuilder');
-      expect(dom.textContent).toContain('AI Job-Application Copilot');
+      expect(dom.textContent).toContain('Local Job-Application Copilot');
       expect(dom.textContent).toContain('Local Client-Side Storage');
     });
 
-    it('should switch tabs smoothly across Job, Resumes, Tailor, Prep, and Settings', async () => {
+    it('should switch tabs smoothly across Profile, Job, Resumes, Tailor, Prep, and Settings', async () => {
       const dom = await renderComponent(<App />);
       const buttons = Array.from(dom.querySelectorAll('nav button')) as HTMLButtonElement[];
-      expect(buttons.length).toBe(5);
+      expect(buttons.length).toBe(6);
 
-      // Tab 1: Job
+      // Tab 0 is Profile; with a complete profile the panel opens on Job.
       expect(dom.textContent).toContain('Active Job Posting');
 
       // Click Resumes Tab
       await act(async () => {
-        buttons[1].click();
+        buttons[2].click();
       });
       expect(dom.textContent).toContain('Upload New Resume');
 
       // Click Tailor Tab
       await act(async () => {
-        buttons[2].click();
+        buttons[3].click();
       });
       expect(dom.textContent).toContain('Deterministic ATS Customization');
 
       // Click Prep Tab
       await act(async () => {
-        buttons[3].click();
+        buttons[4].click();
       });
       expect(dom.textContent).toContain('AI Interview Prep Briefing');
 
       // Click Settings Tab
       await act(async () => {
-        buttons[4].click();
+        buttons[5].click();
       });
       expect(dom.textContent).toContain('Extension Settings & Engine Mode');
     });
@@ -135,6 +138,7 @@ describe('Extension UI & Tab Components Suite', () => {
       const dom = await renderComponent(
         <JobTab
           job={null}
+          profile={null}
           resumes={[]}
           activeResume={null}
           onSelectResume={vi.fn()}
@@ -154,6 +158,7 @@ describe('Extension UI & Tab Components Suite', () => {
       const dom = await renderComponent(
         <JobTab
           job={MOCK_JOB}
+          profile={MOCK_SENIOR_PROFILE}
           resumes={[MOCK_SENIOR_FULLSTACK_RESUME]}
           activeResume={MOCK_SENIOR_FULLSTACK_RESUME}
           onSelectResume={vi.fn()}
@@ -179,6 +184,7 @@ describe('Extension UI & Tab Components Suite', () => {
       const dom = await renderComponent(
         <JobTab
           job={MOCK_JOB}
+          profile={MOCK_SENIOR_PROFILE}
           resumes={[MOCK_SENIOR_FULLSTACK_RESUME]}
           activeResume={MOCK_SENIOR_FULLSTACK_RESUME}
           onSelectResume={vi.fn()}
@@ -206,6 +212,7 @@ describe('Extension UI & Tab Components Suite', () => {
       const dom = await renderComponent(
         <JobTab
           job={null}
+          profile={null}
           resumes={[]}
           activeResume={null}
           onSelectResume={vi.fn()}
@@ -244,6 +251,7 @@ describe('Extension UI & Tab Components Suite', () => {
       const dom = await renderComponent(
         <JobTab
           job={MOCK_JOB}
+          profile={MOCK_SENIOR_PROFILE}
           resumes={[MOCK_SENIOR_FULLSTACK_RESUME, MOCK_JUNIOR_FRONTEND_RESUME]}
           activeResume={MOCK_SENIOR_FULLSTACK_RESUME}
           onSelectResume={vi.fn()}

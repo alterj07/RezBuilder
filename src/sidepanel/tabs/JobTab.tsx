@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Briefcase,
   RefreshCw,
@@ -17,11 +17,17 @@ import {
 import { JobPosting } from '../../types/job';
 import { Resume } from '../../types/resume';
 import { AtsPresetName, AtsScoreResult } from '../../types/scoring';
+import { UserProfile } from '../../types/profile';
+import { FitResult } from '../../types/fit';
+import { calculateBestFit } from '../../services/fit';
+import { BestFitCard } from '../../components/fit/BestFitCard';
 import { calculateAtsScore } from '../../services/scoring/atsEngine';
 import { compareResumesAgainstJob } from '../../services/scoring/multiResumeComparator';
 
 interface JobTabProps {
   job: JobPosting | null;
+  /** Candidate Profile driving Best Fit %. Null hides the card (the onboarding gate covers that case). */
+  profile: UserProfile | null;
   resumes: Resume[];
   activeResume: Resume | null;
   onSelectResume: (id: string) => void;
@@ -34,6 +40,7 @@ interface JobTabProps {
 
 export const JobTab: React.FC<JobTabProps> = ({
   job,
+  profile,
   resumes,
   activeResume,
   onSelectResume,
@@ -56,6 +63,18 @@ export const JobTab: React.FC<JobTabProps> = ({
 
   // Compute multi-resume comparison if multiple resumes exist
   const comparisonResult = job && resumes.length > 1 ? compareResumesAgainstJob(job, resumes, selectedPreset) : null;
+
+  // Best Fit % (profile vs. job). Deterministic and cheap, but memoised on the
+  // job/profile identity so preset toggles and modal state don't re-run it.
+  const fitResult: FitResult | null = useMemo(() => {
+    if (!job || !profile) return null;
+    try {
+      return calculateBestFit(job, profile);
+    } catch {
+      // A malformed posting must never take the whole tab down.
+      return null;
+    }
+  }, [job?.id, job?.scrapedAt, job?.description, profile?.id, profile?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +214,9 @@ export const JobTab: React.FC<JobTabProps> = ({
           </p>
         </div>
       )}
+
+      {/* Best Fit % (Candidate Profile vs. posting) */}
+      {job && profile && fitResult && <BestFitCard result={fitResult} />}
 
       {/* ATS Scoring Section */}
       {job && (
