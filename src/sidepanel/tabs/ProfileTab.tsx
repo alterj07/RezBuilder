@@ -38,7 +38,13 @@ import {
   resumeToProfileImport,
   parseLinkedInExportFiles,
 } from "../../services/profile";
-import { LinkedInImportResult } from "../../background/linkedinImport";
+import { LINKEDIN_SECTIONS } from "../../background/linkedinImport";
+import type {
+  LinkedInImportProgress,
+  LinkedInImportResult,
+  LinkedInPageStatus,
+  LinkedInSectionKind,
+} from "../../background/linkedinImport";
 import { BasicsForm } from "../../components/profile/BasicsForm";
 import {
   EducationForm,
@@ -294,6 +300,36 @@ function formatDate(iso: string): string {
   });
 }
 
+function canMessageBackground(): boolean {
+  return (
+    typeof chrome !== "undefined" &&
+    !!chrome.runtime &&
+    typeof chrome.runtime.sendMessage === "function"
+  );
+}
+
+/** Names the LinkedIn skills scraper may see as context lines ("Intern at Acme", a certification name…). */
+function knownContextNamesFrom(profile: UserProfile): string[] {
+  const names = new Set<string>();
+  profile.certifications.forEach((c) => hasText(c.name) && names.add(c.name.trim()));
+  profile.education.forEach((e) => hasText(e.institution) && names.add(e.institution.trim()));
+  profile.experiences.forEach((x) => {
+    if (hasText(x.company)) names.add(x.company.trim());
+    if (x.type === "project" && hasText(x.title)) names.add(x.title.trim());
+  });
+  return Array.from(names);
+}
+
+/** Replaces the entries for pages that were re-read, keeping the others. */
+function mergePageStatuses(
+  previous: LinkedInPageStatus[] | undefined,
+  next: LinkedInPageStatus[],
+): LinkedInPageStatus[] {
+  if (!previous || previous.length === 0) return next;
+  const replaced = new Set(next.map((p) => p.kind));
+  return [...previous.filter((p) => !replaced.has(p.kind)), ...next];
+}
+
 function openUrl(url: string): void {
   if (
     typeof chrome !== "undefined" &&
@@ -336,6 +372,10 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   });
   const [editingSection, setEditingSection] = useState<SectionKey | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  /** Tab the last LinkedIn import used, so a section retry can reuse it. */
+  const [linkedInTabId, setLinkedInTabId] = useState<number | undefined>(
+    undefined,
+  );
   const snapshotRef = useRef<UserProfile | null>(null);
   const mountedRef = useRef(true);
 
@@ -343,6 +383,42 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+    };
+  }, []);
+
+  // Progress of a running LinkedIn import, broadcast by the background.
+  useEffect(() => {
+    if (
+      typeof chrome === "undefined" ||
+      !chrome.runtime?.onMessage ||
+      typeof chrome.runtime.onMessage.addListener !== "function"
+    )
+      return;
+    const listener = (message: unknown) => {
+      const progress = message as Partial<LinkedInImportProgress> | null;
+      if (!progress || progress.type !== "LINKEDIN_IMPORT_PROGRESS") return;
+      const { step, total, label, kind } = progress;
+      if (
+        typeof step !== "number" ||
+        typeof total !== "number" ||
+        typeof label !== "string" ||
+        typeof kind !== "string"
+      )
+        return;
+      setImportStatus((current) =>
+        current.kind === "busy" && current.source === "linkedin"
+          ? { ...current, progress: { step, total, label, kind } }
+          : current,
+      );
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => {
+      try {
+        if (typeof chrome !== "undefined")
+          chrome.runtime?.onMessage?.removeListener?.(listener);
+      } catch {
+        // The runtime went away (panel closing); nothing to detach.
+      }
     };
   }, []);
 
@@ -410,29 +486,76 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
   const applyImport = async (
     imp: ProfileImport,
-    options?: { resumeId?: string },
-  ) => {
+    options?: {
+      resumeId?: string;
+      /** Builds the status to show instead of the default summary. */
+      status?: (saved: UserProfile) => ImportStatus;
+    },
+  ): Promise<UserProfile> => {
     // Keep unsaved wizard edits: save the draft first so mergeImport merges into it.
     await profileStorage.saveProfile(cleanProfile(draft));
-    const saved = await profileStorage.mergeImport(imp, options);
+    const saved = await profileStorage.mergeImport(imp, {
+      resumeId: options?.resumeId,
+    });
     if (mountedRef.current) {
       setDraft(saved);
-      setImportStatus({
-        kind: "success",
-        message: summarizeImport(imp),
-        warnings: imp.warnings || [],
-      });
+      setImportStatus(
+        options?.status
+          ? options.status(saved)
+          : {
+              kind: "success",
+              message: summarizeImport(imp),
+              warnings: imp.warnings || [],
+            },
+      );
       if (mode === "wizard") setWizardPinned(true);
     }
     onProfileSaved(saved);
+    return saved;
   };
 
+  // ---- LinkedIn (multi-page import driven by the background) ---------------
+
+  /** Turns a background result into stored data + a status with the per-page summary. */
+  const finishLinkedInImport = async (
+    result: LinkedInImportResult | undefined,
+    previousPages: LinkedInPageStatus[] | undefined,
+  ) => {
+    const pages = mergePageStatuses(previousPages, result?.pages || []);
+    if (typeof result?.tabId === "number") setLinkedInTabId(result.tabId);
+
+    if (!result || !result.success || !result.profile) {
+      setImportStatus({
+        kind: "error",
+        message: result?.error || "LinkedIn import failed.",
+        warnings: result?.profile?.warnings || [],
+        pages,
+      });
+      return;
+    }
+
+    const imp = result.profile;
+    await applyImport(imp, {
+      status: (saved) => ({
+        kind: "success",
+        message: result.cancelled
+          ? `${summarizeImport(imp)} (cancelled early)`
+          : summarizeImport(imp),
+        warnings: imp.warnings || [],
+        pages,
+        showAboutHint:
+          !hasText(imp.story?.summary) && !hasText(saved.story.summary),
+      }),
+    });
+  };
+
+  const currentLinkedInPages = (): LinkedInPageStatus[] | undefined =>
+    importStatus.kind === "success" || importStatus.kind === "error"
+      ? importStatus.pages
+      : undefined;
+
   const handleImportLinkedIn = async () => {
-    if (
-      typeof chrome === "undefined" ||
-      !chrome.runtime ||
-      typeof chrome.runtime.sendMessage !== "function"
-    ) {
+    if (!canMessageBackground()) {
       setImportStatus({
         kind: "error",
         message: "LinkedIn import is only available inside the extension.",
@@ -443,26 +566,76 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
     setImportStatus({
       kind: "busy",
       source: "linkedin",
-      message: "Opening your LinkedIn profile in a new tab…",
+      message: "Reading your LinkedIn profile in a new tab…",
+      cancellable: true,
     });
     try {
       const result = (await chrome.runtime.sendMessage({
         type: "IMPORT_LINKEDIN_PROFILE",
       })) as LinkedInImportResult | undefined;
-      if (!result || !result.success || !result.profile) {
-        setImportStatus({
-          kind: "error",
-          message: result?.error || "LinkedIn import failed.",
-          warnings: [],
-        });
-        return;
-      }
-      await applyImport(result.profile);
+      if (!mountedRef.current) return;
+      await finishLinkedInImport(result, undefined);
     } catch (err) {
+      if (!mountedRef.current) return;
       setImportStatus({
         kind: "error",
         message: err instanceof Error ? err.message : "LinkedIn import failed.",
         warnings: [],
+      });
+    }
+  };
+
+  const handleCancelLinkedIn = () => {
+    if (!canMessageBackground()) return;
+    setImportStatus((current) =>
+      current.kind === "busy" && current.source === "linkedin"
+        ? {
+            ...current,
+            message: "Cancelling after the current page…",
+            cancellable: false,
+          }
+        : current,
+    );
+    try {
+      const maybePromise = chrome.runtime.sendMessage({
+        type: "CANCEL_LINKEDIN_IMPORT",
+      }) as unknown;
+      if (maybePromise && typeof (maybePromise as Promise<unknown>).catch === "function")
+        (maybePromise as Promise<unknown>).catch(() => {
+          // The import already finished; nothing to cancel.
+        });
+    } catch {
+      // Same.
+    }
+  };
+
+  const handleRetryLinkedInSection = async (kind: LinkedInSectionKind) => {
+    if (!canMessageBackground()) return;
+    const section = LINKEDIN_SECTIONS.find((s) => s.kind === kind);
+    const label = section?.label.toLowerCase() || kind;
+    const previousPages = currentLinkedInPages();
+    setImportStatus({
+      kind: "busy",
+      source: "linkedin",
+      message: `Re-reading your LinkedIn ${label}…`,
+    });
+    try {
+      const result = (await chrome.runtime.sendMessage({
+        type: "IMPORT_LINKEDIN_SECTION",
+        kind,
+        tabId: linkedInTabId,
+        knownContextNames: knownContextNamesFrom(draft),
+      })) as LinkedInImportResult | undefined;
+      if (!mountedRef.current) return;
+      await finishLinkedInImport(result, previousPages);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setImportStatus({
+        kind: "error",
+        message:
+          err instanceof Error ? err.message : `Could not re-read ${label}.`,
+        warnings: [],
+        pages: previousPages,
       });
     }
   };
@@ -680,6 +853,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       onImportExportFiles={handleImportExportFiles}
       onOpenUrl={openUrl}
       onDismissStatus={() => setImportStatus({ kind: "idle" })}
+      onCancelLinkedIn={handleCancelLinkedIn}
+      onRetryLinkedInSection={(kind) => void handleRetryLinkedInSection(kind)}
     />
   );
 

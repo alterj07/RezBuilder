@@ -1,17 +1,56 @@
 import React, { useRef, useState } from 'react';
-import { Linkedin, FileText, FileSpreadsheet, ExternalLink, AlertTriangle, CheckCircle2, HelpCircle, X } from 'lucide-react';
+import {
+  Linkedin,
+  FileText,
+  FileSpreadsheet,
+  ExternalLink,
+  AlertTriangle,
+  CheckCircle2,
+  HelpCircle,
+  X,
+  RotateCcw,
+} from 'lucide-react';
 import { Resume } from '../../types/resume';
+import { LINKEDIN_SECTIONS } from '../../background/linkedinImport';
+import type { LinkedInPageStatus, LinkedInSection, LinkedInSectionKind } from '../../background/linkedinImport';
 import { selectClass, secondaryButtonClass, primaryButtonClass, ghostButtonClass, hintTextClass } from './fieldStyles';
 
 export const LINKEDIN_SKILLS_URL = 'https://www.linkedin.com/in/me/details/skills/';
 
+export const LINKEDIN_ABOUT_HINT =
+  'LinkedIn only loads your About section when you scroll your profile; you can paste it into the Story step.';
+
 export type ImportSource = 'linkedin' | 'resume' | 'export';
+
+/** Mirrors the background's `LINKEDIN_IMPORT_PROGRESS` message. */
+export interface ImportProgress {
+  step: number;
+  total: number;
+  label: string;
+  kind: string;
+}
 
 export type ImportStatus =
   | { kind: 'idle' }
-  | { kind: 'busy'; source: ImportSource; message: string }
-  | { kind: 'success'; message: string; warnings: string[] }
-  | { kind: 'error'; message: string; warnings: string[] };
+  | {
+      kind: 'busy';
+      source: ImportSource;
+      message: string;
+      /** Latest LinkedIn progress broadcast, when importing from LinkedIn. */
+      progress?: ImportProgress;
+      /** Show a Cancel button (LinkedIn multi-page import only). */
+      cancellable?: boolean;
+    }
+  | {
+      kind: 'success';
+      message: string;
+      warnings: string[];
+      /** Per-page outcome of a LinkedIn import; drives the summary line and retry buttons. */
+      pages?: LinkedInPageStatus[];
+      /** The import brought no About text; tell the user how to add it. */
+      showAboutHint?: boolean;
+    }
+  | { kind: 'error'; message: string; warnings: string[]; pages?: LinkedInPageStatus[] };
 
 interface ImportRowProps {
   resumes: Resume[];
@@ -22,11 +61,47 @@ interface ImportRowProps {
   /** Opens a URL in a new tab (chrome.tabs.create when available). */
   onOpenUrl: (url: string) => void;
   onDismissStatus: () => void;
+  /** Stops a running LinkedIn import after its current page. */
+  onCancelLinkedIn?: () => void;
+  /** Re-reads one LinkedIn section page that did not load. */
+  onRetryLinkedInSection?: (kind: LinkedInSectionKind) => void;
 }
 
 /** The scraper's "Only N skills visible; open /details/skills/ …" warning. */
 function isSkillsVisibilityWarning(warning: string): boolean {
   return /skills?/i.test(warning) && /(visible|details\/skills)/i.test(warning);
+}
+
+/** "Reading experience… (2/7)" */
+export function formatImportProgress(progress: ImportProgress): string {
+  return `Reading ${progress.label.toLowerCase()}… (${progress.step}/${progress.total})`;
+}
+
+/** Section pages (not the profile page) in canonical order, keeping only those visited. */
+function visitedSections(pages: LinkedInPageStatus[]): { section: LinkedInSection; page: LinkedInPageStatus }[] {
+  const result: { section: LinkedInSection; page: LinkedInPageStatus }[] = [];
+  for (const section of LINKEDIN_SECTIONS) {
+    const page = pages.find((p) => p.kind === section.kind);
+    if (page) result.push({ section, page });
+  }
+  return result;
+}
+
+/** "Experience: 3 · Education: 1 · … · Skills: not loaded" */
+export function formatLinkedInPageSummary(pages: LinkedInPageStatus[]): string {
+  return visitedSections(pages)
+    .map(({ section, page }) => {
+      const value = page.status === 'ok' ? String(page.count) : page.status === 'empty' ? 'not loaded' : 'failed';
+      return `${section.label}: ${value}`;
+    })
+    .join(' · ');
+}
+
+/** Sections whose page yielded nothing and can be retried on their own. */
+export function retryableLinkedInSections(pages: LinkedInPageStatus[]): LinkedInSection[] {
+  return visitedSections(pages)
+    .filter(({ page }) => page.status !== 'ok')
+    .map(({ section }) => section);
 }
 
 /**
@@ -41,6 +116,8 @@ export const ImportRow: React.FC<ImportRowProps> = ({
   onImportExportFiles,
   onOpenUrl,
   onDismissStatus,
+  onCancelLinkedIn,
+  onRetryLinkedInSection,
 }) => {
   const [resumePickerOpen, setResumePickerOpen] = useState(false);
   const [selectedResumeId, setSelectedResumeId] = useState<string>(resumes[0]?.id || '');
@@ -57,6 +134,11 @@ export const ImportRow: React.FC<ImportRowProps> = ({
     e.target.value = '';
   };
 
+  const finished = status.kind === 'success' || status.kind === 'error' ? status : null;
+  const finishedPages = finished?.pages && finished.pages.length > 0 ? finished.pages : null;
+  const pageSummary = finishedPages ? formatLinkedInPageSummary(finishedPages) : '';
+  const retryable = finishedPages && onRetryLinkedInSection ? retryableLinkedInSections(finishedPages) : [];
+
   return (
     <div className="space-y-2" data-testid="import-row">
       <div className="flex items-center justify-between">
@@ -70,7 +152,7 @@ export const ImportRow: React.FC<ImportRowProps> = ({
           data-testid="import-linkedin"
           onClick={onImportLinkedIn}
           disabled={busy}
-          title="Opens linkedin.com/in/me in a new tab and reads your profile"
+          title="Opens linkedin.com/in/me in a new tab and reads your profile section by section"
           className={`${secondaryButtonClass} justify-center`}
         >
           {status.kind === 'busy' && status.source === 'linkedin' ? (
@@ -193,30 +275,47 @@ export const ImportRow: React.FC<ImportRowProps> = ({
       {status.kind === 'busy' && (
         <div
           data-testid="import-status"
-          className="p-2.5 rounded-lg bg-brand-500/10 border border-brand-500/30 text-brand-200 text-[11px] flex items-center gap-2"
+          className="p-2.5 rounded-lg bg-brand-500/10 border border-brand-500/30 text-brand-200 text-[11px] flex items-start gap-2"
         >
-          <span className="w-3 h-3 border-2 border-brand-400 border-t-transparent rounded-full animate-spin shrink-0" />
-          <span>{status.message}</span>
+          <span className="w-3 h-3 mt-px border-2 border-brand-400 border-t-transparent rounded-full animate-spin shrink-0" />
+          <div className="flex-1 min-w-0 space-y-0.5">
+            <div>{status.message}</div>
+            {status.progress && (
+              <div data-testid="import-progress" className="text-brand-300/90 font-mono text-[10px]">
+                {formatImportProgress(status.progress)}
+              </div>
+            )}
+          </div>
+          {status.source === 'linkedin' && status.cancellable && onCancelLinkedIn && (
+            <button
+              type="button"
+              data-testid="import-cancel"
+              onClick={onCancelLinkedIn}
+              className="shrink-0 text-brand-300 hover:text-white hover:underline"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       )}
 
-      {(status.kind === 'success' || status.kind === 'error') && (
+      {finished && (
         <div
           data-testid="import-status"
           className={`p-2.5 rounded-lg border text-[11px] space-y-1.5 animate-fadeIn ${
-            status.kind === 'success'
+            finished.kind === 'success'
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
               : 'bg-rose-500/10 border-rose-500/30 text-rose-200'
           }`}
         >
           <div className="flex items-start justify-between gap-2">
             <span className="flex items-start gap-1.5">
-              {status.kind === 'success' ? (
+              {finished.kind === 'success' ? (
                 <CheckCircle2 className="w-3.5 h-3.5 mt-px shrink-0" />
               ) : (
                 <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
               )}
-              <span data-testid="import-status-message">{status.message}</span>
+              <span data-testid="import-status-message">{finished.message}</span>
             </span>
             <button
               type="button"
@@ -227,9 +326,16 @@ export const ImportRow: React.FC<ImportRowProps> = ({
               <X className="w-3 h-3" />
             </button>
           </div>
-          {status.warnings.length > 0 && (
+
+          {pageSummary && (
+            <p data-testid="import-page-summary" className="text-[10px] font-mono text-surface-300 leading-relaxed">
+              {pageSummary}
+            </p>
+          )}
+
+          {finished.warnings.length > 0 && (
             <ul className="space-y-1 pl-5" data-testid="import-warnings">
-              {status.warnings.map((warning) => (
+              {finished.warnings.map((warning) => (
                 <li key={warning} className="text-amber-200/90 list-disc">
                   <span>{warning}</span>
                   {isSkillsVisibilityWarning(warning) && (
@@ -246,6 +352,29 @@ export const ImportRow: React.FC<ImportRowProps> = ({
                 </li>
               ))}
             </ul>
+          )}
+
+          {retryable.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-0.5" data-testid="import-retry-row">
+              {retryable.map((section) => (
+                <button
+                  key={section.kind}
+                  type="button"
+                  data-testid={`import-retry-${section.kind}`}
+                  onClick={() => onRetryLinkedInSection?.(section.kind)}
+                  className={secondaryButtonClass}
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Retry {section.label.toLowerCase()}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {finished.kind === 'success' && finished.showAboutHint && (
+            <p data-testid="import-about-hint" className="text-surface-400">
+              {LINKEDIN_ABOUT_HINT}
+            </p>
           )}
         </div>
       )}
