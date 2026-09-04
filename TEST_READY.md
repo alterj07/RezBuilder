@@ -13,7 +13,7 @@
 | 3. Cross-Feature | 8 | Multi-module integration pipelines (Detection $\rightarrow$ Scraping $\rightarrow$ ATS Scoring $\rightarrow$ Tailoring $\rightarrow$ Form Auto-fill $\rightarrow$ Export) |
 | 4. Real-World Application | 6 | Realistic end-to-end application scenarios (Algomaster Negative, Greenhouse Stripe, Lever PM, Workday Enterprise, Schema.org, Ashby ML) |
 | 5. Adversarial Hardening | 62 | White-box adversarial stress testing (29 Detection & Scraper tests + 33 ATS, Tailoring & Form Auto-fill tests) |
-| **Total E2E Tests** | **136** | **100% Pass Rate (136/136 E2E, 413/413 Full Repository Tests)** |
+| **Total E2E Tests** | **136** | **100% Pass Rate (136/136 E2E, 629/629 Full Repository Tests)** |
 
 ## Feature Checklist
 | Feature | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Tier 5 |
@@ -37,3 +37,8 @@
 - `tests/e2e/tier5_ats_autofill_adversarial.test.ts`: 33 tests covering ATS scoring, resume tailoring, and form auto-fill adversarial hardening.
 - `tests/tabJobLifecycle.test.ts`: 27 tests covering the per-tab job registry, tab activation/navigation/close handling, active-job clearing, and LinkedIn job surface recognition.
 - `tests/contentAutoParse.test.ts`: 8 tests covering automatic content-script parsing, no-job reporting, and re-send suppression.
+- `tests/profileStorage.test.ts`, `tests/profileCompleteness.test.ts`, `tests/profileMerge.test.ts`, `tests/profileImporters.test.ts`: 60 tests covering profile persistence, the completeness gate, import merge precedence, and resume/LinkedIn-export importers.
+- `tests/fitEngine.test.ts`, `tests/fitRequirements.test.ts`: 57 tests covering Best Fit % factors, weight redistribution, hard blockers, confidence, monotonicity, determinism, and speed.
+- `tests/linkedinProfileScraper.test.ts`, `tests/linkedinProfileImport.test.ts`: 58 tests covering the own-profile LinkedIn DOM scraper and the background import flow (login walls, lazy rendering, retries, timeouts).
+- `tests/tailorProfileRatings.test.ts`: 5 tests covering rating-aware tailoring order without fabrication.
+- `tests/ui_fit_gate.test.tsx`, `tests/ui_profile_tab.test.tsx`: 36 tests covering the onboarding gate, Best Fit card, profile wizard/editor, and import row.
