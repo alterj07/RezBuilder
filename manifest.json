@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "RezBuilder \u2014 AI Job-Application Copilot",
+  "name": "RezBuilder — Job-Application Copilot",
   "version": "1.0.0",
-  "description": "AI-powered copilot for job applications: ATS scoring, resume tailoring, and interview prep.",
+  "description": "Free, local-first job-application copilot: candidate profile, Best Fit %, ATS scoring, resume tailoring, and interview prep. No accounts, no paid AI.",
   "permissions": [
     "storage",
     "sidePanel",
