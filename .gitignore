@@ -25,3 +25,4 @@ agent orchestration scratch
 CLAUDE.md
 .claude/
 *.md
+!README.md
