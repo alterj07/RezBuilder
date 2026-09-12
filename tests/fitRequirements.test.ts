@@ -150,10 +150,55 @@ describe('extractJobRequirements — role level', () => {
 });
 
 describe('extractJobRequirements — blockers, remote, employment', () => {
-  it('treats U.S. citizenship as a clearance-type blocker and honours negations', () => {
-    expect(extractJobRequirements(makeJob({ description: 'Must be a U.S. citizen due to contract requirements.' })).requiresClearance).toBe(true);
+  it('separates clearance from citizenship and honours negations', () => {
+    const citizen = extractJobRequirements(makeJob({ description: 'Must be a U.S. citizen due to contract requirements.' }));
+    expect(citizen.requiresUsCitizenship).toBe(true);
+    expect(citizen.requiresClearance).toBe(false);
     expect(extractJobRequirements(makeJob({ description: 'Applicants must be able to obtain a TS/SCI.' })).requiresClearance).toBe(true);
     expect(extractJobRequirements(makeJob({ description: 'No security clearance required for this role.' })).requiresClearance).toBe(false);
+  });
+
+  it('reads the clearance level, whether it must be active, and the polygraph', () => {
+    const active = extractJobRequirements(makeJob({ description: 'Active TS/SCI clearance with a full-scope polygraph required.' }));
+    expect(active.clearanceLevel).toBe('ts_sci');
+    expect(active.clearanceMustBeActive).toBe(true);
+    expect(active.clearancePolygraph).toBe('full_scope');
+
+    const obtainable = extractJobRequirements(makeJob({ description: 'Must be able to obtain a Secret clearance after hire.' }));
+    expect(obtainable.clearanceLevel).toBe('secret');
+    expect(obtainable.clearanceObtainable).toBe(true);
+    expect(obtainable.clearanceMustBeActive).toBe(false);
+  });
+
+  it('flags export-control ("U.S. person") wording separately from citizenship', () => {
+    const itar = extractJobRequirements(makeJob({ description: 'This position is subject to ITAR; applicants must be U.S. persons.' }));
+    expect(itar.requiresUsPersonStatus).toBe(true);
+    expect(itar.requiresUsCitizenship).toBe(false);
+  });
+
+  it('detects a positive sponsorship offer and the "now or in the future" refusal', () => {
+    expect(extractJobRequirements(makeJob({ description: 'Visa sponsorship is available for this role.' })).offersSponsorship).toBe(true);
+    expect(extractJobRequirements(makeJob({ description: 'We are unable to sponsor visas.' })).offersSponsorship).toBe(false);
+    const future = extractJobRequirements(makeJob({ description: 'We will not sponsor applicants now or in the future.' }));
+    expect(future.requiresSponsorshipUnavailable).toBe(true);
+    expect(future.sponsorshipUnavailableFuture).toBe(true);
+  });
+
+  it('ignores EEO boilerplate when looking for veteran and disability preferences', () => {
+    const boilerplate = extractJobRequirements(
+      makeJob({
+        description:
+          'All qualified applicants will receive consideration without regard to race, disability or protected veteran status.',
+      }),
+    );
+    expect(boilerplate.veteranPreference).toBe(false);
+    expect(boilerplate.disabilityPreference).toBe(false);
+
+    const real = extractJobRequirements(
+      makeJob({ description: 'Military veterans are encouraged to apply. Candidates with disabilities are welcome.' }),
+    );
+    expect(real.veteranPreference).toBe(true);
+    expect(real.disabilityPreference).toBe(true);
   });
 
   it('detects several "no sponsorship" phrasings but not positive ones', () => {

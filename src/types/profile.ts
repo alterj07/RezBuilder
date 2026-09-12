@@ -105,6 +105,97 @@ export interface ProfileStory {
   needsSponsorship?: boolean;
 }
 
+// --- Work eligibility & self-identification ---------------------------------
+
+/** Right-to-work status in the United States (the market the scrapers target). */
+export type WorkAuthorization =
+  | 'us_citizen'
+  | 'us_permanent_resident'
+  /** H-1B, L-1, TN, E-3, O-1 … — authorized today, but a change of employer needs a petition. */
+  | 'us_work_visa'
+  /** F-1 / J-1 on OPT or CPT — authorized today, needs sponsorship when it expires. */
+  | 'us_student_visa'
+  /** Asylee, refugee, TPS, EAD, spouse of a visa holder — authorized with no employer petition. */
+  | 'us_other_authorized'
+  /** Not authorized to work in the US today. */
+  | 'needs_sponsorship'
+  | 'prefer_not_to_say';
+
+export type VisaType =
+  | 'h1b'
+  | 'h4_ead'
+  | 'f1_opt'
+  | 'f1_stem_opt'
+  | 'f1_cpt'
+  | 'j1'
+  | 'l1'
+  | 'tn'
+  | 'e3'
+  | 'o1'
+  | 'ead'
+  | 'other';
+
+/** US federal clearance ladder, lowest to highest. */
+export type ClearanceLevel = 'none' | 'public_trust' | 'confidential' | 'secret' | 'top_secret' | 'ts_sci';
+
+/** `eligible` = never held one but has no known disqualifier (e.g. a US citizen who could be sponsored for one). */
+export type ClearanceStatus = 'active' | 'inactive' | 'eligible' | 'none';
+
+export type PolygraphType = 'none' | 'ci' | 'full_scope';
+
+export interface ProfileClearance {
+  level: ClearanceLevel;
+  status: ClearanceStatus;
+  polygraph?: PolygraphType;
+  /** Year the clearance was granted or last adjudicated. */
+  grantedYear?: number;
+}
+
+export type VeteranStatus =
+  | 'not_a_veteran'
+  | 'veteran'
+  /** Disabled, recently separated, active-duty wartime or Armed Forces service medal veteran (VEVRAA). */
+  | 'protected_veteran'
+  | 'active_duty'
+  | 'reserve_or_guard'
+  | 'prefer_not_to_say';
+
+export type DisabilityStatus = 'yes' | 'no' | 'prefer_not_to_say';
+
+/**
+ * Work-eligibility and self-identification facts that postings screen on but
+ * that never show up in a resume: citizenship / visa status, security
+ * clearance, veteran status and disability status.
+ *
+ * Every field is optional and every enum has a `prefer_not_to_say` escape
+ * hatch — an unanswered question is treated as *unknown*, never as a "no".
+ * The engines only ever penalise a positive contradiction (see
+ * `evaluateEligibility`), so leaving this whole section blank costs nothing.
+ *
+ * Like the rest of the profile this lives in `chrome.storage.local` and never
+ * leaves the browser.
+ */
+
+export interface ProfileEligibility {
+  workAuthorization?: WorkAuthorization;
+  /** Only meaningful for `us_work_visa` / `us_student_visa` / `us_other_authorized`. */
+  visaType?: VisaType;
+  /**
+   * Overrides the default derived from `workAuthorization`. "Do you now require
+   * sponsorship?" — an H-1B holder changing employers answers yes.
+   */
+  requiresSponsorshipNow?: boolean;
+  /** "Will you in the future require sponsorship?" — an F-1 on OPT answers yes. */
+  requiresSponsorshipFuture?: boolean;
+  /** Free-text country names, for postings that name a country other than the US. */
+  citizenships?: string[];
+  clearance?: ProfileClearance;
+  veteranStatus?: VeteranStatus;
+  disabilityStatus?: DisabilityStatus;
+}
+
+export const DEFAULT_PROFILE_ELIGIBILITY: ProfileEligibility = {};
+
 export interface ProfileContact {
   name: string;
   email?: string;
@@ -133,6 +224,8 @@ export interface UserProfile {
   experiences: ProfileExperience[];
   certifications: ProfileCertification[];
   story: ProfileStory;
+  /** Optional: profiles saved before this section existed simply have none. */
+  eligibility?: ProfileEligibility;
   sources: ProfileSource[];
   createdAt: string; // ISO
   updatedAt: string; // ISO
@@ -164,6 +257,7 @@ export interface ProfileImport {
   experiences?: Omit<ProfileExperience, 'id'>[];
   certifications?: Omit<ProfileCertification, 'id'>[];
   story?: Partial<ProfileStory>;
+  eligibility?: Partial<ProfileEligibility>;
   /** Free-form notes about what could not be parsed, surfaced in the UI. */
   warnings?: string[];
 }
@@ -188,6 +282,7 @@ export function createEmptyProfile(now: string = new Date().toISOString()): User
     experiences: [],
     certifications: [],
     story: { ...DEFAULT_PROFILE_STORY },
+    eligibility: { ...DEFAULT_PROFILE_ELIGIBILITY },
     sources: [],
     createdAt: now,
     updatedAt: now,

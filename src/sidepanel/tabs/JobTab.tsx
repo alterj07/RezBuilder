@@ -43,9 +43,10 @@ export const JobTab: React.FC<JobTabProps> = ({
   const [manualDesc, setManualDesc] = useState('');
   const [showKeywordList, setShowKeywordList] = useState(false);
 
-  // Compute ATS Score if job and active resume exist
+  // Compute ATS Score if job and active resume exist. The profile is passed so
+  // eligibility screening questions (clearance, citizenship, sponsorship) count.
   const scoreResult: AtsScoreResult | null =
-    job && activeResume ? calculateAtsScore(job, activeResume, selectedPreset) : null;
+    job && activeResume ? calculateAtsScore(job, activeResume, selectedPreset, undefined, profile) : null;
 
   // Compute multi-resume comparison if multiple resumes exist
   const comparisonResult = job && resumes.length > 1 ? compareResumesAgainstJob(job, resumes, selectedPreset) : null;

@@ -11,7 +11,8 @@ export type FitFactorKey =
   | 'education'
   | 'certifications'
   | 'story'
-  | 'preferences';
+  | 'preferences'
+  | 'eligibility';
 
 export interface FitFactor {
   key: FitFactorKey;
@@ -64,6 +65,7 @@ export interface FitWeights {
   certifications: number;
   story: number;
   preferences: number;
+  eligibility: number;
 }
 
 export const DEFAULT_FIT_WEIGHTS: FitWeights = {
@@ -73,4 +75,7 @@ export const DEFAULT_FIT_WEIGHTS: FitWeights = {
   certifications: 5,
   story: 10,
   preferences: 5,
+  // Only counted when the posting actually screens on eligibility; the other
+  // six sum to 100 on their own, so an ordinary posting scores exactly as before.
+  eligibility: 12,
 };

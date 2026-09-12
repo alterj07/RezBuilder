@@ -55,6 +55,26 @@ export interface ActionVerbRecommendation {
   category?: string;
 }
 
+/**
+ * How a posting's eligibility screening questions (clearance, citizenship,
+ * sponsorship, veteran / disability preference) affect the ATS score.
+ *
+ * Only present when a `UserProfile` was passed to the scorer: the five-factor
+ * resume score is otherwise untouched by anything outside the document.
+ */
+export interface EligibilityScreeningDetail {
+  /** False when the posting states no eligibility requirement or preference. */
+  applicable: boolean;
+  /** Requirements the profile explicitly fails — a screening question would reject the application. */
+  knockouts: string[];
+  /** Attributes the posting screens on that the profile confirms. */
+  qualifyingAttributes: string[];
+  /** Confirmed attributes the resume never mentions, so a keyword screen would miss them. */
+  missingFromResume: string[];
+  /** Signed points this screening moved the weighted five-factor total by. */
+  adjustment: number;
+}
+
 export interface AtsScoreResult {
   overallScore: number; // 0-100
   presetUsed: AtsPresetName;
@@ -94,7 +114,9 @@ export interface AtsScoreResult {
     cleanlinessRating: 'Excellent' | 'Good' | 'Fair' | 'Poor';
   };
   relevanceDetails: RelevanceBreakdown;
-  
+  /** Only set when the scorer was given a `UserProfile`. */
+  eligibilityDetails?: EligibilityScreeningDetail;
+
   // High-level summary & action items
   recommendations: string[];
   actionVerbRecommendations?: ActionVerbRecommendation[];

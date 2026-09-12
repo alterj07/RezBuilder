@@ -17,6 +17,7 @@ import {
   normalizeDate,
   parseYear,
 } from './inference';
+import { inferEligibilityFromText } from './eligibilityInference';
 
 function hasText(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -166,6 +167,12 @@ export function resumeToProfileImport(resume: Resume, now: Date = new Date()): P
     const story: Partial<ProfileStory> = { summary: sections.summary.trim() };
     imp.story = story;
   }
+
+  // ---- Work eligibility --------------------------------------------------
+  // Clearance, visa status and veteran status are usually stated on the resume
+  // itself; anything found only pre-fills answers the user has not given.
+  const eligibility = inferEligibilityFromText(resume.rawText || '');
+  if (eligibility) imp.eligibility = eligibility;
 
   if (warnings.length > 0) imp.warnings = warnings;
   return imp;

@@ -175,7 +175,7 @@ describe('calculateBestFit — weight redistribution', () => {
 describe('calculateBestFit — hard blockers', () => {
   it('flags a clearance posting for a profile without clearance and caps at 35', () => {
     const r = calculateBestFit(MOCK_CLEARANCE_JOB, MOCK_SENIOR_PROFILE);
-    expect(r.hardBlockers).toContain('Requires a security clearance or U.S. citizenship');
+    expect(r.hardBlockers).toContain('Requires an active TS/SCI clearance (your profile lists none)');
     expect(r.fitPercent).toBeLessThanOrEqual(HARD_BLOCKER_CAP);
   });
 

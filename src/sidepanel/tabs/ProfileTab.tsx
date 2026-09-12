@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowCounterClockwise, BookOpen, Briefcase, CaretLeft, CaretRight, Check, ClipboardText, EnvelopeSimple, FloppyDisk, GithubLogo, Globe, GraduationCap, LinkedinLogo, MapPin, Medal, Pencil, Phone, Sparkle, Trash, User, WarningCircle, X } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, BookOpen, Briefcase, CaretLeft, CaretRight, Check, ClipboardText, EnvelopeSimple, FloppyDisk, GithubLogo, Globe, GraduationCap, LinkedinLogo, MapPin, Medal, Pencil, Phone, ShieldCheck, Sparkle, Trash, User, WarningCircle, X } from '@phosphor-icons/react';
 import {
   ProfileImport,
   ProfileSource,
@@ -36,6 +36,15 @@ import {
 import { CertificationForm } from "../../components/profile/CertificationForm";
 import { StoryForm } from "../../components/profile/StoryForm";
 import {
+  EligibilityForm,
+  CLEARANCE_LEVEL_OPTIONS,
+  CLEARANCE_STATUS_OPTIONS,
+  DISABILITY_OPTIONS,
+  VETERAN_OPTIONS,
+  VISA_OPTIONS,
+  WORK_AUTHORIZATION_OPTIONS,
+} from "../../components/profile/EligibilityForm";
+import {
   SkillPicker,
   sortSkillsByRating,
 } from "../../components/profile/SkillPicker";
@@ -70,6 +79,7 @@ type StepKey =
   | "experiences"
   | "certifications"
   | "story"
+  | "eligibility"
   | "review";
 
 const STEPS: {
@@ -115,6 +125,13 @@ const STEPS: {
     title: "Your story",
     description: "What you want next and why.",
     icon: BookOpen,
+    optional: true,
+  },
+  {
+    key: "eligibility",
+    title: "Work eligibility",
+    description: "Clearance, visa status, veteran and disability status.",
+    icon: ShieldCheck,
     optional: true,
   },
   {
@@ -182,6 +199,7 @@ function stepIssues(step: StepKey, profile: UserProfile): string[] {
     }
     case "certifications":
     case "story":
+    case "eligibility":
       return [];
     case "review":
       return checkProfileCompleteness(profile).missing;
@@ -228,7 +246,24 @@ function cleanProfile(profile: UserProfile): UserProfile {
       .filter((c) => hasText(c.name))
       .map((c) => ({ ...c, name: c.name.trim() })),
     story: { ...profile.story, summary: profile.story.summary.trim() },
+    eligibility: profile.eligibility
+      ? {
+          ...profile.eligibility,
+          citizenships: (profile.eligibility.citizenships || [])
+            .map((c) => c.trim())
+            .filter(Boolean),
+        }
+      : profile.eligibility,
   };
+}
+
+/** Human label for a stored enum value, from the form's own option list. */
+function optionLabel<T extends string>(
+  options: { value: T; label: string }[],
+  value: T | undefined,
+): string | null {
+  if (!value) return null;
+  return options.find((o) => o.value === value)?.label ?? null;
 }
 
 function plural(
@@ -818,6 +853,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             onChange={(story) => updateDraft({ story }, "story")}
           />
         );
+      case "eligibility":
+        return (
+          <EligibilityForm
+            eligibility={draft.eligibility || {}}
+            onChange={(eligibility) => updateDraft({ eligibility }, "eligibility")}
+          />
+        );
     }
   };
 
@@ -1327,6 +1369,57 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                 ` · ${draft.story.preferredLocations.join(", ")}`}
             </div>
           </div>,
+        )}
+
+        {sectionCard(
+          "eligibility",
+          "Work eligibility",
+          ShieldCheck,
+          (() => {
+            const el = draft.eligibility || {};
+            const rows: { label: string; value: string }[] = [];
+            const auth = optionLabel(WORK_AUTHORIZATION_OPTIONS, el.workAuthorization);
+            if (auth) rows.push({ label: "Authorization", value: auth });
+            const visa = optionLabel(VISA_OPTIONS, el.visaType);
+            if (visa) rows.push({ label: "Visa", value: visa });
+            if (el.requiresSponsorshipNow !== undefined) {
+              rows.push({ label: "Needs sponsorship now", value: el.requiresSponsorshipNow ? "Yes" : "No" });
+            }
+            if (el.requiresSponsorshipFuture !== undefined) {
+              rows.push({ label: "Needs sponsorship later", value: el.requiresSponsorshipFuture ? "Yes" : "No" });
+            }
+            if ((el.citizenships || []).length > 0) {
+              rows.push({ label: "Citizenships", value: (el.citizenships || []).join(", ") });
+            }
+            if (el.clearance) {
+              const level = optionLabel(CLEARANCE_LEVEL_OPTIONS, el.clearance.level);
+              const status = optionLabel(CLEARANCE_STATUS_OPTIONS, el.clearance.status);
+              rows.push({ label: "Clearance", value: [status, level].filter(Boolean).join(" ") });
+            }
+            const veteran = optionLabel(VETERAN_OPTIONS, el.veteranStatus);
+            if (veteran) rows.push({ label: "Veteran status", value: veteran });
+            const disability = optionLabel(DISABILITY_OPTIONS, el.disabilityStatus);
+            if (disability) rows.push({ label: "Disability", value: disability });
+
+            if (rows.length === 0) {
+              return (
+                <p className={hintTextClass}>
+                  Not answered. Optional — fill it in and postings that screen on clearance, citizenship or sponsorship
+                  will be scored against your real eligibility.
+                </p>
+              );
+            }
+            return (
+              <ul className="space-y-0.5 text-[11px]" data-testid="eligibility-summary">
+                {rows.map((row) => (
+                  <li key={row.label} className="text-surface-300">
+                    <span className="text-surface-500">{row.label}: </span>
+                    {row.value}
+                  </li>
+                ))}
+              </ul>
+            );
+          })(),
         )}
 
         {/* Sources */}

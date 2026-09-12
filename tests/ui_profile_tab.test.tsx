@@ -78,6 +78,15 @@ describe('ProfileTab — Candidate Profile wizard, editor and imports', () => {
     });
   };
 
+  const select = async (el: HTMLSelectElement, value: string) => {
+    await act(async () => {
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set;
+      nativeSetter?.call(el, value);
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await flush();
+  };
+
   const stored = (): UserProfile => mockHarness.store.local[STORAGE_KEY];
 
   const addSkill = async (name: string) => {
@@ -218,6 +227,8 @@ describe('ProfileTab — Candidate Profile wizard, editor and imports', () => {
 
     await click(q('wizard-next'));
     expect(q('profile-wizard').getAttribute('data-step')).toBe('story');
+    await click(q('wizard-next'));
+    expect(q('profile-wizard').getAttribute('data-step')).toBe('eligibility');
     await click(q('wizard-next'));
     expect(q('profile-wizard').getAttribute('data-step')).toBe('review');
     expect(dom.textContent).toContain('All required sections are filled in.');
@@ -566,11 +577,27 @@ describe('ProfileTab — Candidate Profile wizard, editor and imports', () => {
     expect(container.querySelector('[data-testid="story-drives-tag-mentorship"]')).not.toBeNull();
 
     await click(q('story-remote-hybrid'));
-    await click(q('story-authorized-yes'));
     await click(q('save-story'));
     expect(stored().story.drives).toEqual(['impact', 'mentorship']);
     expect(stored().story.remotePreference).toBe('hybrid');
-    expect(stored().story.authorizedToWork).toBe(true);
+  });
+
+  it('captures work eligibility answers and shows them on the review card', async () => {
+    const { dom } = await renderTab(MOCK_SENIOR_PROFILE);
+    await click(q('edit-eligibility'));
+
+    await select(q<HTMLSelectElement>('eligibility-authorization'), 'us_citizen');
+    await select(q<HTMLSelectElement>('eligibility-clearance-level'), 'secret');
+    await select(q<HTMLSelectElement>('eligibility-veteran'), 'protected_veteran');
+    await click(q('eligibility-sponsorship-now-no'));
+    await click(q('save-eligibility'));
+
+    const eligibility = stored().eligibility!;
+    expect(eligibility.workAuthorization).toBe('us_citizen');
+    expect(eligibility.clearance).toEqual({ level: 'secret', status: 'active' });
+    expect(eligibility.veteranStatus).toBe('protected_veteran');
+    expect(eligibility.requiresSponsorshipNow).toBe(false);
+    expect(dom.textContent).toContain('Protected veteran (VEVRAA)');
   });
 
   it('clears the profile after confirmation and returns to the wizard', async () => {

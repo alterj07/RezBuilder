@@ -14,8 +14,9 @@ import { scoreEducation } from './educationFactor';
 import { scoreCertifications } from './certificationsFactor';
 import { scoreStory } from './storyFactor';
 import { scorePreferences } from './preferencesFactor';
+import { evaluateEligibility } from './eligibilityFactor';
 
-export const FIT_FACTOR_ORDER: FitFactorKey[] = ['skills', 'experience', 'education', 'certifications', 'story', 'preferences'];
+export const FIT_FACTOR_ORDER: FitFactorKey[] = ['skills', 'experience', 'education', 'certifications', 'story', 'preferences', 'eligibility'];
 
 const FACTOR_LABEL: Record<FitFactorKey, string> = {
   skills: 'Skills',
@@ -24,6 +25,7 @@ const FACTOR_LABEL: Record<FitFactorKey, string> = {
   certifications: 'Certifications',
   story: 'Story & culture',
   preferences: 'Preferences',
+  eligibility: 'Eligibility',
 };
 
 /** Any hard blocker caps the headline number at this value. */
@@ -36,8 +38,6 @@ const EMPLOYMENT_LABEL: Record<JobEmploymentType, string> = {
   contract: 'Contract',
   unknown: 'Unspecified',
 };
-
-const CLEARANCE_PROFILE_RE = /\bclearance\b|\bts\/sci\b|\btop\s+secret\b|\bsecret\b|\bpublic\s+trust\b/i;
 
 /**
  * Redistributes the configured weights over applicable factors so they sum
@@ -70,18 +70,16 @@ export function redistributeWeights(weights: FitWeights, applicable: Record<FitF
   return out;
 }
 
-function detectHardBlockers(profile: UserProfile, reqs: JobRequirements, profileYears: number): { blockers: string[]; isZeroFit: boolean } {
-  const blockers: string[] = [];
+function detectHardBlockers(
+  profile: UserProfile,
+  reqs: JobRequirements,
+  profileYears: number,
+  eligibilityBlockers: string[],
+): { blockers: string[]; isZeroFit: boolean } {
+  // Clearance, citizenship, export-control and sponsorship knockouts are all
+  // decided by the eligibility assessment; they lead because they are absolute.
+  const blockers: string[] = [...eligibilityBlockers];
   let isZeroFit = false;
-
-  if (reqs.requiresClearance) {
-    const text = [...(profile.skills || []).map((s) => s.name), ...(profile.certifications || []).map((c) => c.name)].join('\n');
-    if (!CLEARANCE_PROFILE_RE.test(text)) blockers.push('Requires a security clearance or U.S. citizenship');
-  }
-
-  if (reqs.requiresSponsorshipUnavailable && profile.story?.needsSponsorship === true) {
-    blockers.push('Posting does not offer visa sponsorship');
-  }
 
   const studentLevel = reqs.roleLevel === 'internship' || reqs.roleLevel === 'new_grad';
   const attainedRank = highestDegreeRank(profile, studentLevel);
@@ -189,6 +187,7 @@ export function calculateBestFit(job: JobPosting, profile: UserProfile, weights?
   };
 
   const skills = scoreSkills(ctx);
+  const eligibility = evaluateEligibility(reqs, profile);
   const outcomes: Record<FitFactorKey, FactorOutcome> = {
     skills,
     experience: scoreExperience(ctx),
@@ -196,6 +195,16 @@ export function calculateBestFit(job: JobPosting, profile: UserProfile, weights?
     certifications: scoreCertifications(ctx),
     story: scoreStory(ctx),
     preferences: scorePreferences(ctx),
+    eligibility: eligibility.applicable
+      ? {
+          score: eligibility.score,
+          applicable: true,
+          evidence: [...eligibility.evidence],
+          // Blockers are surfaced separately; gaps carry the recoverable items
+          // plus the questions the profile has not answered yet.
+          gaps: [...eligibility.gaps, ...eligibility.unknowns],
+        }
+      : { score: 0, applicable: false, evidence: [], gaps: [] },
   };
 
   const merged: FitWeights = { ...DEFAULT_FIT_WEIGHTS, ...(weights || {}) };
@@ -213,7 +222,7 @@ export function calculateBestFit(job: JobPosting, profile: UserProfile, weights?
     gaps: [...outcomes[key].gaps],
   }));
 
-  const { blockers: hardBlockers, isZeroFit } = detectHardBlockers(profile, reqs, ctx.profileYears);
+  const { blockers: hardBlockers, isZeroFit } = detectHardBlockers(profile, reqs, ctx.profileYears, eligibility.blockers);
   let fitPercent = clamp(Math.round(factors.reduce((sum, f) => sum + (f.score * f.weight) / 100, 0)));
   if (isZeroFit) fitPercent = 0;
   else if (hardBlockers.length > 0) fitPercent = Math.min(fitPercent, HARD_BLOCKER_CAP);

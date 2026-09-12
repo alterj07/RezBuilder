@@ -13,6 +13,7 @@ function fullProfile(): UserProfile {
   ];
   p.certifications = [{ id: 'c1', name: 'CKA' }];
   p.story = { ...p.story, summary: 'I build things', drives: ['impact'], targetRoles: ['SWE'] };
+  p.eligibility = { workAuthorization: 'us_citizen' };
   return p;
 }
 
@@ -106,6 +107,7 @@ describe('checkProfileCompleteness', () => {
     p.story = { ...p.story, summary: '', drives: [], targetRoles: [] };
     p.certifications = [];
     p.contact.email = '';
+    p.eligibility = {};
     const result = checkProfileCompleteness(p);
     expect(result.isComplete).toBe(true);
     expect(result.suggestions).toEqual([
@@ -113,7 +115,26 @@ describe('checkProfileCompleteness', () => {
       'Add what drives you (e.g. impact, mentorship, fast-paced teams)',
       'Add the roles you are targeting',
       'Add certifications, if you have any',
+      'Add your work eligibility (clearance, visa status, veteran status)',
       'Add an email address so applications can be auto-filled',
     ]);
+  });
+
+  it('suggests filling in work eligibility, but never requires it', () => {
+    const p = fullProfile();
+    p.eligibility = {};
+    const blank = checkProfileCompleteness(p);
+    expect(blank.isComplete).toBe(true);
+    expect(blank.score).toBe(100);
+    expect(blank.suggestions).toEqual(['Add your work eligibility (clearance, visa status, veteran status)']);
+
+    // "Prefer not to say" is an answer the user has not really given.
+    p.eligibility = { workAuthorization: 'prefer_not_to_say', disabilityStatus: 'prefer_not_to_say' };
+    expect(checkProfileCompleteness(p).suggestions).toEqual([
+      'Add your work eligibility (clearance, visa status, veteran status)',
+    ]);
+
+    p.eligibility = { veteranStatus: 'veteran' };
+    expect(checkProfileCompleteness(p).suggestions).toEqual([]);
   });
 });

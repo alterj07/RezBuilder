@@ -1,4 +1,4 @@
-import { ProfileCompleteness, UserProfile } from '../../types/profile';
+import { ProfileCompleteness, ProfileEligibility, UserProfile } from '../../types/profile';
 
 /** Minimum requirements for the onboarding gate. */
 export const PROFILE_MIN_SKILLS = 3;
@@ -19,13 +19,27 @@ function hasText(value: string | undefined | null): boolean {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+/** True once the user has answered at least one work-eligibility question. */
+function hasEligibilityAnswer(eligibility: ProfileEligibility | undefined): boolean {
+  if (!eligibility) return false;
+  return Boolean(
+    (eligibility.workAuthorization && eligibility.workAuthorization !== 'prefer_not_to_say') ||
+      eligibility.clearance ||
+      (eligibility.veteranStatus && eligibility.veteranStatus !== 'prefer_not_to_say') ||
+      (eligibility.disabilityStatus && eligibility.disabilityStatus !== 'prefer_not_to_say') ||
+      eligibility.requiresSponsorshipNow !== undefined ||
+      eligibility.requiresSponsorshipFuture !== undefined ||
+      (eligibility.citizenships || []).some(hasText)
+  );
+}
+
 /**
  * Onboarding gate: is the profile usable for Best Fit %?
  *
  * Required for `isComplete`: a name, one education entry with an institution and
  * graduating class, at least three skills, and one experience (projects count)
- * with an organization and title. Certifications and the story are optional
- * but improve the `score` and produce `suggestions`.
+ * with an organization and title. Certifications, the story and work eligibility
+ * are optional but improve the `score` and produce `suggestions`.
  */
 export function checkProfileCompleteness(profile: UserProfile | null | undefined): ProfileCompleteness {
   const missing: string[] = [];
@@ -46,6 +60,7 @@ export function checkProfileCompleteness(profile: UserProfile | null | undefined
         'Add what drives you (e.g. impact, mentorship, fast-paced teams)',
         'Add the roles you are targeting',
         'Add certifications, if you have any',
+        'Add your work eligibility (clearance, visa status, veteran status)',
         'Add an email address so applications can be auto-filled',
       ],
     };
@@ -106,6 +121,13 @@ export function checkProfileCompleteness(profile: UserProfile | null | undefined
   const hasCertifications = (profile.certifications || []).some((c) => hasText(c.name));
   if (hasCertifications) score += WEIGHTS.certifications;
   else suggestions.push('Add certifications, if you have any');
+
+  // Eligibility is never required — a blank answer is treated as unknown, not a
+  // "no" — but filling it in is what lets the engines catch clearance /
+  // citizenship / sponsorship screening before you apply.
+  if (!hasEligibilityAnswer(profile.eligibility)) {
+    suggestions.push('Add your work eligibility (clearance, visa status, veteran status)');
+  }
 
   if (!hasText(profile.contact?.email)) {
     suggestions.push('Add an email address so applications can be auto-filled');

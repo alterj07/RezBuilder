@@ -6,6 +6,7 @@ import {
   ProfileImport,
   ProfileSkill,
   ProfileSource,
+  ProfileEligibility,
   ProfileStory,
   SkillRating,
   UserProfile,
@@ -219,6 +220,37 @@ function mergeStory(base: ProfileStory, imp: Partial<ProfileStory> | undefined):
 }
 
 /**
+ * Eligibility is merged conservatively: an import may only fill in an answer
+ * the user has not given. Nothing an importer guesses ever overwrites what the
+ * user typed, because a wrong clearance or authorization answer is worse than
+ * a missing one.
+ */
+function mergeEligibility(
+  base: ProfileEligibility | undefined,
+  imp: Partial<ProfileEligibility> | undefined
+): ProfileEligibility | undefined {
+  if (!imp) return base ? { ...base } : base;
+  const result: ProfileEligibility = { ...(base || {}) };
+
+  if (!result.workAuthorization && imp.workAuthorization) result.workAuthorization = imp.workAuthorization;
+  if (!result.visaType && imp.visaType) result.visaType = imp.visaType;
+  if (result.requiresSponsorshipNow === undefined && imp.requiresSponsorshipNow !== undefined) {
+    result.requiresSponsorshipNow = imp.requiresSponsorshipNow;
+  }
+  if (result.requiresSponsorshipFuture === undefined && imp.requiresSponsorshipFuture !== undefined) {
+    result.requiresSponsorshipFuture = imp.requiresSponsorshipFuture;
+  }
+  if (!(result.citizenships || []).length && (imp.citizenships || []).length) {
+    result.citizenships = mergeBullets([], imp.citizenships || []);
+  }
+  if (!result.clearance && imp.clearance) result.clearance = { ...imp.clearance };
+  if (!result.veteranStatus && imp.veteranStatus) result.veteranStatus = imp.veteranStatus;
+  if (!result.disabilityStatus && imp.disabilityStatus) result.disabilityStatus = imp.disabilityStatus;
+
+  return result;
+}
+
+/**
  * Merges an importer's partial profile into an existing profile.
  *
  * Pure: neither argument is mutated. Rules:
@@ -228,7 +260,7 @@ function mergeStory(base: ProfileStory, imp: Partial<ProfileStory> | undefined):
  * - Education (institution + degree level), experiences (company + title) and
  *   certifications (name) are deduped case-insensitively; matching entries only
  *   fill fields the base left empty, and experience bullets are unioned.
- * - Story fields are only filled when empty in the base.
+ * - Story and eligibility fields are only filled when empty in the base.
  * - A `ProfileSource` for this import is appended and `updatedAt` is bumped.
  */
 export function mergeProfileImport(
@@ -248,6 +280,7 @@ export function mergeProfileImport(
     experiences: mergeExperiences(base.experiences || [], imp.experiences),
     certifications: mergeCertifications(base.certifications || [], imp.certifications),
     story: mergeStory(base.story, imp.story),
+    eligibility: mergeEligibility(base.eligibility, imp.eligibility),
     sources: [...(base.sources || []), source],
     updatedAt: now,
   };

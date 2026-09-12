@@ -1,6 +1,7 @@
 export { checkProfileCompleteness, PROFILE_MIN_SKILLS } from './completeness';
 export { mergeProfileImport, DEFAULT_IMPORTED_SKILL_RATING } from './merge';
 export { resumeToProfileImport, rateSkillFromBullets } from './resumeToProfile';
+export { inferEligibilityFromText } from './eligibilityInference';
 export {
   parseLinkedInExportFiles,
   parseCsv,

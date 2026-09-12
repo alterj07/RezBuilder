@@ -41,58 +41,6 @@ const EMPLOYMENT_OPTIONS: { value: EmploymentPreference; label: string }[] = [
   { value: 'contract', label: 'Contract' },
 ];
 
-type TriState = 'yes' | 'no' | 'unset';
-
-function toTriState(value: boolean | undefined): TriState {
-  if (value === true) return 'yes';
-  if (value === false) return 'no';
-  return 'unset';
-}
-
-function fromTriState(value: TriState): boolean | undefined {
-  if (value === 'yes') return true;
-  if (value === 'no') return false;
-  return undefined;
-}
-
-const TriStateControl: React.FC<{
-  label: string;
-  value: boolean | undefined;
-  onChange: (value: boolean | undefined) => void;
-  testId: string;
-}> = ({ label, value, onChange, testId }) => {
-  const current = toTriState(value);
-  const options: { value: TriState; label: string }[] = [
-    { value: 'yes', label: 'Yes' },
-    { value: 'no', label: 'No' },
-    { value: 'unset', label: 'Prefer not to say' },
-  ];
-  return (
-    <div>
-      <label className={labelClass}>{label}</label>
-      <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={label}>
-        {options.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={current === opt.value}
-            data-testid={`${testId}-${opt.value}`}
-            onClick={() => onChange(fromTriState(opt.value))}
-            className={`py-1.5 px-2 rounded-lg text-[11px] font-medium border transition-all ${
-              current === opt.value
-                ? 'bg-brand-500/20 border-brand-500/50 text-brand-300'
-                : 'bg-surface-950 border-surface-800 text-surface-400 hover:text-surface-200'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 export const StoryForm: React.FC<StoryFormProps> = ({ story, onChange }) => {
   const patch = (partial: Partial<ProfileStory>) => onChange({ ...story, ...partial });
 
@@ -207,19 +155,6 @@ export const StoryForm: React.FC<StoryFormProps> = ({ story, onChange }) => {
           })}
         </div>
       </div>
-
-      <TriStateControl
-        label="Authorized to work in your target country?"
-        value={story.authorizedToWork}
-        onChange={(authorizedToWork) => patch({ authorizedToWork })}
-        testId="story-authorized"
-      />
-      <TriStateControl
-        label="Will you need visa sponsorship?"
-        value={story.needsSponsorship}
-        onChange={(needsSponsorship) => patch({ needsSponsorship })}
-        testId="story-sponsorship"
-      />
     </div>
   );
 };

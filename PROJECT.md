@@ -5,6 +5,7 @@
 - Parse job postings on any website; every non-job page must stay non-parseable (negative-veto classifier).
 - A required **Candidate Profile** (name, education with graduating class, skills rated 1-5, experiences, certifications, story/drives) gates the Job, Tailor and Prep tabs. Importable from a resume, from the user's own LinkedIn profile page, or from a LinkedIn data export. LinkedIn OAuth is deliberately not used: its public API does not expose skills/experience to third-party apps.
 - **Best Fit %** per posting: explainable profile-vs-job estimate with factor breakdown, strengths, improvements and hard blockers.
+- **Work eligibility** (security clearance, U.S. citizenship / visa status, sponsorship, veteran and disability self-identification) is captured in the profile and scored deterministically. Every answer is optional; unanswered means *unknown*, never a "no", and nothing is ever inferred from a name, school or location.
 - Phase 2 (design only, see `docs/AUTO_APPLY_ROADMAP.md`): saved searches, job watch, answer bank, templated cover letters, review-then-submit automation. Not started until the roadmap's entry criteria are met.
 
 ## Architecture
@@ -23,8 +24,8 @@ RezBuilder is a Chrome Extension (Manifest V3) structured into six primary layer
    - Single local source of truth about the user (`rezbuilder_profile`), completeness gate, merge rules for imports.
    - Importers: resume → profile, LinkedIn own-profile page scraper (content script, anchor-id based), LinkedIn data-export CSV parser.
 6. **Best Fit Engine** (`src/services/fit/`):
-   - `extractJobRequirements` turns a posting into required/nice-to-have skills, degree and graduation-window rules, role level, clearance/sponsorship flags, remote/location/employment type, and culture themes.
-   - Six weighted factors (skills 40, experience 25, education 15, story 10, certifications 5, preferences 5) with weight redistribution for non-applicable factors, hard blockers capping the score at 35, and a confidence tier.
+   - `extractJobRequirements` turns a posting into required/nice-to-have skills, degree and graduation-window rules, role level, clearance level/status/polygraph, U.S. citizenship and export-control ("U.S. person") requirements, sponsorship availability, veteran/disability preferences, remote/location/employment type, and culture themes.
+   - Seven weighted factors (skills 40, experience 25, education 15, eligibility 12, story 10, certifications 5, preferences 5) with weight redistribution for non-applicable factors, hard blockers capping the score at 35, and a confidence tier. The eligibility factor is applicable only when the posting actually screens on eligibility, so an ordinary posting scores exactly as it did before.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
@@ -44,7 +45,8 @@ RezBuilder is a Chrome Extension (Manifest V3) structured into six primary layer
 | 13 | Profile Importers | Resume → profile, LinkedIn own-profile page scrape (no API), LinkedIn data-export CSVs; deterministic merge with rating precedence | M7 | Vision |
 | 14 | Best Fit % Engine & Card | Explainable profile-vs-job score with factor breakdown, matched/missing skills with ratings, strengths, improvements, hard blockers, confidence | M7 | Vision |
 | 15 | Rating-Aware Tailoring | Local tailoring orders skills and bullets by the user's confidence ratings; no fabrication | M7 | Vision |
-| 16 | Auto-Apply Roadmap | Phase 2 design (saved searches, job watch on public board APIs, answer bank, templated cover letters, review-then-submit) — design only | Phase 2 | Vision |
+| 16 | Work Eligibility Screening | Clearance, citizenship / visa / sponsorship, veteran and disability self-ID in the profile; deterministic knockout + credit scoring shared by Best Fit % and the ATS score | M7 | Vision |
+| 17 | Auto-Apply Roadmap | Phase 2 design (saved searches, job watch on public board APIs, answer bank, templated cover letters, review-then-submit) — design only | Phase 2 | Vision |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -77,14 +79,17 @@ RezBuilder is a Chrome Extension (Manifest V3) structured into six primary layer
 
 ### Candidate Profile
 - Storage key `rezbuilder_profile`; `profileStorage.getProfile/saveProfile/updateProfile/mergeImport/clearProfile`.
-- `checkProfileCompleteness(profile): ProfileCompleteness` — complete when name, ≥1 education with graduation year, ≥3 skills, ≥1 experience (projects count). Certifications optional.
+- `checkProfileCompleteness(profile): ProfileCompleteness` — complete when name, ≥1 education with graduation year, ≥3 skills, ≥1 experience (projects count). Certifications, story and work eligibility are optional (they only produce `suggestions`).
+- `UserProfile.eligibility?: ProfileEligibility` — `workAuthorization`, `visaType`, `requiresSponsorshipNow/Future`, `citizenships[]`, `clearance {level, status, polygraph}`, `veteranStatus`, `disabilityStatus`. All optional; `prefer_not_to_say` and "unanswered" are both treated as unknown. Legacy `story.authorizedToWork` / `story.needsSponsorship` are still read for profiles saved before this section existed.
 - `mergeProfileImport(base, imp)` — dedupes skills case-insensitively keeping the higher rating (a manual rating always beats an import default of 3), education by institution+level, experiences by company+title, certifications by name; story fields fill only when empty.
 - Importers: `resumeToProfileImport(resume)`, `parseLinkedInExportFiles(files)`, `scrapeLinkedInProfile(document, url)`.
 
 ### Best Fit Engine
 - `calculateBestFit(job: JobPosting, profile: UserProfile, weights?: Partial<FitWeights>): FitResult`
   - Returns `{ fitPercent, confidence, factors[], matchedSkills[], missingSkills[], hardBlockers[], strengths[], improvements[], calculatedAt }`; factor weights always sum to 100 after redistribution; any hard blocker caps `fitPercent` at 35.
-- `extractJobRequirements(job): JobRequirements` — required vs nice-to-have skills by textual context, degree/graduation window, role level, clearance, sponsorship, remote/location/employment type, themes.
+- `extractJobRequirements(job): JobRequirements` — required vs nice-to-have skills by textual context, degree/graduation window, role level, clearance (level, must-be-active, obtainable, polygraph), U.S. citizenship / "U.S. person" requirements, sponsorship (unavailable / unavailable-in-future / offered), veteran and disability preferences (EEO boilerplate stripped first), remote/location/employment type, themes.
+- `evaluateEligibility(reqs: JobRequirements, profile): EligibilityAssessment` — shared by Best Fit % and the ATS score. Returns `{ applicable, score, blockers[], evidence[], gaps[], unknowns[], qualifyingAttributes[], resumeWorthyAttributes[] }`. Only a positive contradiction produces a blocker; the one exception is a clearance, where absence from the profile counts as not having one.
+- `resolveEligibility(profile): ResolvedEligibility` — normalises the eligibility block, the legacy story flags, and any clearance wording in skills/certifications into tri-state facts (`undefined` = unknown).
 - Tailoring accepts `{ profile }` so skill ratings order the skills section and bullet relevance (`tailorResumeLocally(job, resume, { profile })`).
 
 ### Detection Engine ↔ Content Script
@@ -93,8 +98,9 @@ RezBuilder is a Chrome Extension (Manifest V3) structured into six primary layer
 - `scraperRegistry.scrape(url: string, document: Document): JobPosting | null`
 
 ### ATS Scoring Engine
-- `scoreResume(job: JobPosting, resume: Resume, weights?: ATSWeights): ATSScoreResult`
+- `scoreResume(job: JobPosting, resume: Resume, weights?: ATSWeights, profile?: UserProfile): ATSScoreResult`
   - Returns `{ overallScore: number, breakdown: { keywordMatch, placementScore, sectionCompleteness, parseSuccess, relevanceScore }, keywordGaps: string[], matchedKeywords: string[], actionVerbRecommendations: { current: string, suggested: string, context: string }[], isRecommended?: boolean }`
+- `calculateAtsScore(job, resume, preset?, customWeights?, profile?)` — passing `profile` adds eligibility screening: a knockout caps `overallScore` at `ELIGIBILITY_KNOCKOUT_CAP` (35), a confirmed attribute the posting screens for adds up to `ELIGIBILITY_MAX_BONUS` (5), and `eligibilityDetails` reports the knockouts, qualifying attributes, the ones missing from the resume, and the signed adjustment. Without a profile the five-factor resume score is unchanged.
 
 ### Form Auto-Fill Engine
 - `formFiller.fillForm(document: Document, resume: Resume): FillResult`
@@ -110,7 +116,7 @@ RezBuilder is a Chrome Extension (Manifest V3) structured into six primary layer
 - `src/services/tailor/`: Deterministic tailoring, `TailorService` (LLM + local fallback)
 - `src/services/ai/`: Gemini, OpenAI, Anthropic LLM client providers
 - `src/services/profile/`: Completeness gate, import merge rules, resume → profile, LinkedIn export CSV importer, inference helpers
-- `src/services/fit/`: Best Fit engine (job requirement extraction, six factor scorers, themes, blockers)
+- `src/services/fit/`: Best Fit engine (job requirement extraction, seven factor scorers, eligibility assessment/signals, themes, blockers)
 - `src/content/linkedinProfile/`: Own-profile LinkedIn DOM scraper; `src/background/linkedinImport.ts` orchestrates the import tab
 - `src/components/profile/`: Profile wizard/editor building blocks and the onboarding gate card
 - `src/components/fit/`: Best Fit card, factor rows, skill match chips

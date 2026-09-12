@@ -1,6 +1,9 @@
 import { JobPosting } from '../../types/job';
 import { Resume } from '../../types/resume';
-import { AtsPresetName, AtsScoreResult, AtsWeights } from '../../types/scoring';
+import { UserProfile } from '../../types/profile';
+import { AtsPresetName, AtsScoreResult, AtsWeights, EligibilityScreeningDetail } from '../../types/scoring';
+import { extractJobRequirements } from '../fit/jobRequirements';
+import { evaluateEligibility } from '../fit/eligibilityFactor';
 import { WEAK_VERB_MAP, extractActionVerbRecommendations } from './actionVerbExtractor';
 import { calculateKeywordMatch } from './keywordMatcher';
 import { calculatePlacementScore } from './placementScorer';
@@ -77,14 +80,55 @@ export function normalizeWeights(weights: AtsWeights): AtsWeights {
 }
 
 /**
+ * A posting whose screening questions the candidate fails cannot score well no
+ * matter how good the resume is, so eligibility knockouts cap the total here
+ * the same way `HARD_BLOCKER_CAP` caps Best Fit %.
+ */
+export const ELIGIBILITY_KNOCKOUT_CAP = 35;
+
+/** Most an eligibility match can add, so it nudges the score without dominating it. */
+export const ELIGIBILITY_MAX_BONUS = 5;
+
+/**
+ * Compares the eligibility attributes the posting screens on against the
+ * profile, and reports which of the confirmed ones the resume never mentions —
+ * a clearance a candidate holds but never wrote down still fails a keyword screen.
+ */
+function screenEligibility(job: JobPosting, resume: Resume, profile: UserProfile): EligibilityScreeningDetail {
+  const assessment = evaluateEligibility(extractJobRequirements(job), profile);
+  const detail: EligibilityScreeningDetail = {
+    applicable: assessment.applicable,
+    knockouts: [...assessment.blockers],
+    qualifyingAttributes: [...assessment.qualifyingAttributes],
+    missingFromResume: [],
+    adjustment: 0,
+  };
+  if (!assessment.applicable) return detail;
+
+  const resumeText = [resume.rawText || '', ...(resume.sections?.skills || []), resume.sections?.summary || ''].join('\n').toLowerCase();
+  for (const { label, keyword } of assessment.resumeWorthyAttributes) {
+    if (!resumeText.includes(keyword)) detail.missingFromResume.push(label);
+  }
+  return detail;
+}
+
+/**
  * Computes full ATS Score result using the 5-factor weighted formula:
  * Score = (Keyword Match × W1) + (Placement × W2) + (Sections × W3) + (Parse Success × W4) + (Relevance × W5)
+ *
+ * Passing `profile` additionally applies the posting's eligibility screening —
+ * clearance, citizenship, sponsorship, veteran / disability preference — which
+ * caps the total at `ELIGIBILITY_KNOCKOUT_CAP` when a screening question would
+ * reject the application and adds up to `ELIGIBILITY_MAX_BONUS` when the
+ * candidate holds an attribute the posting screens for. Omitting it leaves the
+ * five-factor resume score exactly as it was.
  */
 export function calculateAtsScore(
   job: JobPosting,
   resume: Resume,
   preset: AtsPresetName = 'standard',
-  customWeights?: AtsWeights
+  customWeights?: AtsWeights,
+  profile?: UserProfile | null
 ): AtsScoreResult {
   const activeWeights = preset === 'custom' && customWeights ? normalizeWeights(customWeights) : ATS_PRESETS[preset];
 
@@ -115,13 +159,35 @@ export function calculateAtsScore(
       relevanceResult.score * activeWeights.relevance) /
     100;
 
-  const overallScore = Math.min(100, Math.max(0, Math.round(rawTotal)));
+  const baseScore = Math.min(100, Math.max(0, Math.round(rawTotal)));
+
+  // 7. Eligibility screening (only when a profile was supplied)
+  const eligibilityDetails = profile ? screenEligibility(job, resume, profile) : undefined;
+  let overallScore = baseScore;
+  if (eligibilityDetails?.applicable) {
+    if (eligibilityDetails.knockouts.length > 0) {
+      overallScore = Math.min(baseScore, ELIGIBILITY_KNOCKOUT_CAP);
+    } else if (eligibilityDetails.qualifyingAttributes.length > 0) {
+      const bonus = Math.min(ELIGIBILITY_MAX_BONUS, 2 * eligibilityDetails.qualifyingAttributes.length);
+      overallScore = Math.min(100, baseScore + bonus);
+    }
+    eligibilityDetails.adjustment = overallScore - baseScore;
+  }
 
   const missingKeywords = keywordResult.items.filter((k) => !k.foundInResume).map((k) => k.keyword);
   const matchedKeywords = keywordResult.items.filter((k) => k.foundInResume).map((k) => k.keyword);
 
   // Generate actionable recommendations
   const recommendations: string[] = [];
+
+  if (eligibilityDetails?.knockouts.length) {
+    recommendations.push(`This posting screens applicants out on: ${eligibilityDetails.knockouts.join('; ')}.`);
+  }
+  if (eligibilityDetails?.missingFromResume.length) {
+    recommendations.push(
+      `Add ${eligibilityDetails.missingFromResume.join(' and ')} to your resume — this posting screens on it and your resume never mentions it.`
+    );
+  }
 
   if (missingKeywords.length > 0) {
     const topMissing = missingKeywords.slice(0, 4).join(', ');
@@ -185,6 +251,7 @@ export function calculateAtsScore(
       cleanlinessRating: parseResult.cleanlinessRating,
     },
     relevanceDetails: relevanceResult,
+    ...(eligibilityDetails ? { eligibilityDetails } : {}),
     recommendations,
     actionVerbRecommendations,
     calculatedAt: new Date().toISOString(),
@@ -197,13 +264,14 @@ export function calculateAtsScore(
 export function scoreResume(
   job: JobPosting,
   resume: Resume,
-  weightsOrPreset?: AtsWeights | AtsPresetName
+  weightsOrPreset?: AtsWeights | AtsPresetName,
+  profile?: UserProfile | null
 ): AtsScoreResult {
   if (typeof weightsOrPreset === 'string') {
-    return calculateAtsScore(job, resume, weightsOrPreset);
+    return calculateAtsScore(job, resume, weightsOrPreset, undefined, profile);
   }
   if (weightsOrPreset) {
-    return calculateAtsScore(job, resume, 'custom', weightsOrPreset);
+    return calculateAtsScore(job, resume, 'custom', weightsOrPreset, profile);
   }
-  return calculateAtsScore(job, resume, 'standard');
+  return calculateAtsScore(job, resume, 'standard', undefined, profile);
 }

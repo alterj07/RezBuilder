@@ -3,7 +3,7 @@
  * that the fit factors score against. Deterministic regex/lexicon work only.
  */
 import { JobPosting } from '../../types/job';
-import { DegreeLevel } from '../../types/profile';
+import { ClearanceLevel, DegreeLevel, PolygraphType } from '../../types/profile';
 import { extractSkillsFromText } from '../../content/scrapers/keywordExtractor';
 import { isKeywordPresent } from '../scoring/keywordMatcher';
 import { extractRequiredYearsFromJob } from '../scoring/relevanceScorer';
@@ -33,8 +33,27 @@ export interface JobRequirements {
   roleLevel: RoleLevel;
   graduationWindow?: GraduationWindow;
   requiresClearance: boolean;
+  /** Lowest clearance the posting names; undefined when it says "clearance" without a level. */
+  clearanceLevel?: ClearanceLevel;
+  /** The posting wants a clearance the candidate already holds, not one they could obtain. */
+  clearanceMustBeActive: boolean;
+  /** The posting accepts candidates who are merely *able to obtain* a clearance. */
+  clearanceObtainable: boolean;
+  clearancePolygraph?: PolygraphType;
+  /** The posting requires U.S. citizenship outright (separate from any clearance). */
+  requiresUsCitizenship: boolean;
+  /** ITAR / export-control wording: "U.S. person" — a citizen or permanent resident. */
+  requiresUsPersonStatus: boolean;
   /** True when the posting says it will not sponsor visas. */
   requiresSponsorshipUnavailable: boolean;
+  /** The refusal to sponsor is worded as covering the future too ("now or in the future"). */
+  sponsorshipUnavailableFuture: boolean;
+  /** The posting positively offers visa sponsorship. */
+  offersSponsorship: boolean;
+  /** Veteran preference or targeted military hiring, over and above EEO boilerplate. */
+  veteranPreference: boolean;
+  /** Actively invites applicants with disabilities, over and above EEO boilerplate. */
+  disabilityPreference: boolean;
   remote: RemoteMode;
   locations: string[];
   employmentType: JobEmploymentType;
@@ -289,10 +308,50 @@ function detectRoleLevel(job: JobPosting, text: string, pursuing: boolean, gradW
   return 'unknown';
 }
 
-const CLEARANCE_RE = /\bsecurity\s+clearance\b|\bts\/sci\b|\btop\s+secret\b|\bsecret\s+clearance\b|\bactive\s+clearance\b|\bclearance\s+(?:is\s+)?required\b|\bobtain\s+(?:and\s+maintain\s+)?(?:a\s+)?(?:security\s+)?clearance\b|\bpublic\s+trust\b|\bmust\s+be\s+(?:a\s+)?(?:u\.?s\.?|united\s+states)\s+citizen\b|\b(?:u\.?s\.?|united\s+states)\s+citizenship\s+(?:is\s+)?required\b|\bcitizenship\s+(?:is\s+)?required\b|\bonly\s+(?:u\.?s\.?|united\s+states)\s+citizens\b|\b(?:u\.?s\.?|united\s+states)\s+citizens\s+only\b|\bdod\s+(?:8570|clearance)\b/i;
+const CLEARANCE_RE = /\bsecurity\s+clearance\b|\bts\/sci\b|\btop\s+secret\b|\bsecret\s+clearance\b|\bactive\s+clearance\b|\bclearance\s+(?:is\s+)?required\b|\bobtain\s+(?:and\s+maintain\s+)?(?:a\s+)?(?:security\s+)?clearance\b|\bpublic\s+trust\b|\bdod\s+(?:8570|clearance)\b/i;
 const CLEARANCE_NEGATION_RE = /\bno\s+(?:security\s+)?clearance\s+(?:is\s+)?(?:required|needed|necessary)\b|\bclearance\s+(?:is\s+)?not\s+required\b|\bdoes\s+not\s+require\s+(?:a\s+)?(?:security\s+)?clearance\b/i;
 
+/** Clearance levels a posting can name, highest first so the first hit wins. */
+const JOB_CLEARANCE_LEVELS: { level: ClearanceLevel; pattern: RegExp }[] = [
+  { level: 'ts_sci', pattern: /\bts\s*\/\s*sci\b|\btop\s+secret\s*\/\s*sci\b|\bsci\s+(?:access|eligib)/i },
+  { level: 'top_secret', pattern: /\btop\s+secret\b|\bts\s+clearance\b/i },
+  { level: 'secret', pattern: /\bsecret\s+clearance\b|\bdod\s+secret\b|\bsecret[- ]level\b/i },
+  { level: 'confidential', pattern: /\bconfidential\s+clearance\b/i },
+  { level: 'public_trust', pattern: /\bpublic\s+trust\b/i },
+];
+
+const CLEARANCE_ACTIVE_RE = /\b(?:active|current|existing)\b[^.\n]{0,40}?\b(?:clearance|ts\s*\/\s*sci)\b|\bmust\s+(?:currently\s+)?(?:hold|possess|have)\b[^.\n]{0,60}?\bclearance\b|\bcurrently\s+cleared\b/i;
+const CLEARANCE_OBTAINABLE_RE = /\b(?:able|ability|eligible|willing(?:ness)?)\s+to\s+obtain\b|\bobtain\s+(?:and\s+maintain\s+)?(?:a\s+)?(?:security\s+)?clearance\b|\bclearance\s+eligib|\bclearable\b|\bwill\s+be\s+(?:required\s+to\s+)?sponsor(?:ed)?\s+for\s+(?:a\s+)?clearance\b/i;
+const JOB_POLYGRAPH_FULL_RE = /\bfull[- ]scope\s+poly|\bfsp\b|\blifestyle\s+poly/i;
+const JOB_POLYGRAPH_CI_RE = /\bci\s+poly|\bcounter\s*intelligence\s+poly/i;
+
+const US_CITIZENSHIP_RE = /\bmust\s+be\s+(?:a\s+)?(?:u\.?s\.?|united\s+states)\s+citizen\b|\b(?:u\.?s\.?|united\s+states)\s+citizenship\s+(?:is\s+)?required\b|\bcitizenship\s+(?:is\s+)?required\b|\bonly\s+(?:u\.?s\.?|united\s+states)\s+citizens\b|\b(?:u\.?s\.?|united\s+states)\s+citizens\s+only\b|\brequires?\s+(?:u\.?s\.?|united\s+states)\s+citizenship\b/i;
+const US_PERSON_RE = /\bu\.?s\.?\s+persons?\b|\bitar\b|\bexport[- ]control(?:s|led)?\b|\bear\s+regulations?\b/i;
+
 const NO_SPONSORSHIP_RE = /(?:unable|not\s+able|will\s+not|won'?t|cannot|can'?t|does\s+not|do\s+not|doesn'?t|don'?t|not\s+in\s+a\s+position)\s+(?:to\s+)?(?:be\s+able\s+to\s+)?(?:currently\s+)?(?:offer|provide|sponsor|support|consider)\b[^.]{0,60}?\b(?:sponsorship|visas?|h-?1b|work\s+authorization)|\b(?:no|without)\s+(?:visa\s+|employment\s+|immigration\s+)?sponsorship\b|\bsponsorship\s+(?:is\s+)?(?:not|un)\s*available\b|\bnot\s+(?:eligible|available)\s+for\s+(?:visa\s+)?sponsorship\b|\bwithout\s+(?:the\s+need\s+for\s+|requiring\s+)?(?:visa\s+|employer\s+)?sponsorship\b|\bnot\s+require\s+(?:visa\s+|employer\s+|employment\s+)?sponsorship\b|\bwill\s+not\s+(?:now\s+or\s+in\s+the\s+future\s+)?sponsor\b/i;
+
+const NO_SPONSORSHIP_FUTURE_RE = /\b(?:now\s+or\s+(?:at\s+any\s+time\s+)?in\s+the\s+future|now\s+or\s+in\s+the\s+future|either\s+now\s+or\s+in\s+the\s+future|currently\s+or\s+in\s+the\s+future|now\s+or\s+at\s+any\s+point)\b/i;
+
+const OFFERS_SPONSORSHIP_RE = /\b(?:visa|employment|immigration|h-?1b)\s+sponsorship\s+(?:is\s+)?(?:available|offered|provided|supported)\b|\bsponsorship\s+(?:is\s+)?available\b|\bwe\s+(?:are\s+)?(?:happy\s+to\s+|able\s+to\s+|willing\s+to\s+)?sponsor\b|\bwilling\s+to\s+sponsor\b|\bwe\s+(?:do\s+)?(?:offer|provide)\s+(?:visa\s+)?sponsorship\b|\bwe\s+sponsor\s+(?:visas?|h-?1bs?)\b|\bh-?1b\s+(?:transfers?\s+)?(?:welcome|accepted)\b|\bopt\s*\/\s*cpt\s+(?:welcome|accepted)\b/i;
+
+/**
+ * Standard EEO / non-discrimination boilerplate. Every US posting carries it,
+ * so segments matching this are stripped before looking for a genuine veteran
+ * or disability *preference* — otherwise "without regard to … protected veteran
+ * status" would read as one on every single job.
+ */
+const EEO_BOILERPLATE_RE = /\bwithout\s+regard\s+to\b|\bequal\s+(?:opportunity|employment)\b|\bregardless\s+of\s+(?:race|age|sex|gender)\b|\bdoes\s+not\s+discriminate\b|\baffirmative\s+action\s+employer\b|\ball\s+qualified\s+applicants\s+will\s+receive\b/i;
+
+const VETERAN_PREFERENCE_RE = /\bveterans?\s+(?:are\s+)?(?:encouraged\s+to\s+apply|preference|preferred|welcome)\b|\bpreference\s+(?:will\s+be\s+)?given\s+to\s+(?:protected\s+)?veterans?\b|\bvevraa\b|\bmilitary\s+(?:veterans?|service\s+members?|experience)\s+(?:are\s+)?(?:encouraged|preferred|welcome|a\s+plus)\b|\btransitioning\s+(?:service\s+members?|military)\b|\bmilitary[- ]friendly\b|\bskillbridge\b|\bprior\s+military\s+service\s+(?:is\s+)?(?:a\s+plus|preferred)\b/i;
+
+const DISABILITY_PREFERENCE_RE = /\b(?:candidates?|applicants?|individuals?|people|persons?)\s+with\s+disabilit(?:y|ies)\s+(?:are\s+)?(?:encouraged|welcome|preferred|invited)\b|\bdisability\s+confident\b|\bsection\s+503\b|\bwe\s+(?:actively\s+)?(?:welcome|encourage)\s+applications?\s+from\s+(?:people|candidates|individuals)\s+with\s+disabilit/i;
+
+/** The posting text with EEO boilerplate sentences removed. */
+function stripEeoBoilerplate(text: string): string {
+  return segmentText(text)
+    .filter((seg) => !EEO_BOILERPLATE_RE.test(seg))
+    .join('\n');
+}
 
 function detectRemote(job: JobPosting, text: string): RemoteMode {
   switch (job.remoteStatus) {
@@ -422,7 +481,29 @@ export function extractJobRequirements(job: JobPosting): JobRequirements {
   const undergradOnly = UNDERGRAD_ONLY_RE.test(fullText);
 
   const requiresClearance = CLEARANCE_RE.test(fullText) && !CLEARANCE_NEGATION_RE.test(fullText);
+  const clearanceLevel = requiresClearance
+    ? JOB_CLEARANCE_LEVELS.find((c) => c.pattern.test(fullText))?.level
+    : undefined;
+  const clearanceObtainable = requiresClearance && CLEARANCE_OBTAINABLE_RE.test(fullText);
+  // "Active clearance required" beats "able to obtain" when a posting says both.
+  const clearanceMustBeActive = requiresClearance && (CLEARANCE_ACTIVE_RE.test(fullText) || !clearanceObtainable);
+  let clearancePolygraph: PolygraphType | undefined;
+  if (requiresClearance) {
+    if (JOB_POLYGRAPH_FULL_RE.test(fullText)) clearancePolygraph = 'full_scope';
+    else if (JOB_POLYGRAPH_CI_RE.test(fullText)) clearancePolygraph = 'ci';
+  }
+
+  const requiresUsCitizenship = US_CITIZENSHIP_RE.test(fullText);
+  const requiresUsPersonStatus = !requiresUsCitizenship && US_PERSON_RE.test(fullText);
+
   const requiresSponsorshipUnavailable = NO_SPONSORSHIP_RE.test(fullText);
+  const sponsorshipUnavailableFuture = requiresSponsorshipUnavailable && NO_SPONSORSHIP_FUTURE_RE.test(fullText);
+  const offersSponsorship = !requiresSponsorshipUnavailable && OFFERS_SPONSORSHIP_RE.test(fullText);
+
+  // Veteran / disability preferences only count outside the EEO boilerplate.
+  const nonBoilerplate = stripEeoBoilerplate(fullText);
+  const veteranPreference = VETERAN_PREFERENCE_RE.test(nonBoilerplate);
+  const disabilityPreference = DISABILITY_PREFERENCE_RE.test(nonBoilerplate);
 
   // ----- logistics -----
   const remote = detectRemote(job, fullText);
@@ -443,7 +524,17 @@ export function extractJobRequirements(job: JobPosting): JobRequirements {
     roleLevel,
     graduationWindow,
     requiresClearance,
+    clearanceLevel,
+    clearanceMustBeActive,
+    clearanceObtainable,
+    clearancePolygraph,
+    requiresUsCitizenship,
+    requiresUsPersonStatus,
     requiresSponsorshipUnavailable,
+    sponsorshipUnavailableFuture,
+    offersSponsorship,
+    veteranPreference,
+    disabilityPreference,
     remote,
     locations,
     employmentType,
