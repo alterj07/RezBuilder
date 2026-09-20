@@ -55,6 +55,14 @@ export interface FitResult {
   strengths: string[];
   /** Top 3 concrete ways to raise the score, for the summary card. */
   improvements: string[];
+  /** Where the required / preferred split came from (explainability). */
+  requirementsSource?: {
+    kind: 'sections' | 'text';
+    sectionCount: number;
+    unknownSectionCount: number;
+    /** Sections the on-device model labelled. */
+    modelLabelledCount: number;
+  };
   calculatedAt: string; // ISO
 }
 

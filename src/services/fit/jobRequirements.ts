@@ -10,6 +10,8 @@ import { extractRequiredYearsFromJob } from '../scoring/relevanceScorer';
 import { extractThemesFromText } from './themes';
 import { canonicalSkill, isAmbiguousSkillConfirmed } from './skillNames';
 import { DEGREE_RANK } from './profileSignals';
+import { NICE_HEADER, NICE_INLINE, OTHER_HEADER, REQUIRED_HEADER, REQUIRED_STRONG_INLINE } from './sectionHeaders';
+import { JobSection } from '../../types/job';
 
 export type RoleLevel = 'internship' | 'new_grad' | 'junior' | 'mid' | 'senior' | 'lead' | 'unknown';
 export type RemoteMode = 'remote' | 'hybrid' | 'onsite' | 'unknown';
@@ -59,6 +61,10 @@ export interface JobRequirements {
   employmentType: JobEmploymentType;
   themes: string[];
   certificationsMentioned: string[];
+  /** Whether buckets came from scraper-provided sections or from free-text heuristics. */
+  sectionSource: 'sections' | 'text';
+  /** Sections neither heading regexes nor the model could place (0 on the text path). */
+  unknownSectionCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -120,16 +126,6 @@ export function matchCertifications(text: string): string[] {
 
 type SectionMode = 'required' | 'nice' | 'other';
 
-const NICE_HEADER = /\b(?:nice[- ]to[- ]haves?|preferred(?:\s+(?:qualifications?|skills?|experience))?|bonus(?:\s+(?:points?|skills?|qualifications?))?|pluse?s|a\s+plus|great\s+to\s+have|good\s+to\s+have|desirable|advantageous|extra\s+credit|not\s+required\s+but|optional|additional\s+qualifications|would\s+be\s+(?:a\s+)?(?:plus|bonus|great))\b/i;
-
-const REQUIRED_HEADER = /\b(?:requirements?|qualifications?|must[- ]haves?|what\s+(?:you|you'll|you\s+will|we)\s+(?:need|bring|require|expect|are\s+looking\s+for|look\s+for)|what\s+we(?:'re|\s+are)\s+looking\s+for|who\s+you\s+are|required\s+skills|minimum|basic\s+qualifications|you\s+(?:have|bring|must|need|will\s+need|should\s+have)|skills\s+(?:&|and)\s+experience|your\s+(?:background|profile|experience)|essentials?|the\s+ideal\s+candidate|about\s+you|you'll\s+need|we\s+require)\b/i;
-
-const OTHER_HEADER = /\b(?:responsibilities|what\s+you'll\s+do|what\s+you\s+will\s+do|about\s+(?:us|the\s+(?:role|team|company|job|position))|the\s+role|your\s+(?:role|mission|impact)|benefits|perks|compensation|salary|why\s+(?:join|us|work)|our\s+(?:stack|values|culture|mission|team)|equal\s+opportunity|day[- ]to[- ]day|in\s+this\s+role|you\s+will|duties|overview|job\s+description|the\s+team|about\s+the|the\s+opportunity|what\s+we\s+offer|how\s+you'll\s+(?:contribute|make))\b/i;
-
-const NICE_INLINE = /\b(?:nice[- ]to[- ]have|preferred|bonus|(?:is|are|would\s+be)\s+(?:a\s+)?(?:big\s+|huge\s+|strong\s+)?plus|a\s+plus\b|great\s+to\s+have|good\s+to\s+have|desirable|advantageous|not\s+required|optional|familiarity\s+with|exposure\s+to|ideally|helpful\s+but)\b/i;
-
-const REQUIRED_STRONG_INLINE = /\b(?:required|must\s+have|must\s+be|mandatory|minimum\s+of|at\s+least|need\s+to\s+have|essential|prerequisite|requires?\b)/i;
-
 function segmentText(text: string): string[] {
   return text
     .split(/\r?\n+|(?<=[.!?;:])\s+|\s*[•·●▪‣◦∙]\s*|\s+[-–—]\s+/)
@@ -148,10 +144,13 @@ interface Buckets {
   hasRequiredSection: boolean;
 }
 
-function bucketSegments(description: string, qualifications: string[]): Buckets {
-  const buckets: Buckets = { required: [], nice: [], other: [], hasRequiredSection: false };
-  let mode: SectionMode = 'other';
-  for (const seg of segmentText(description)) {
+/**
+ * Free-text state machine: short header-like segments switch the mode, inline
+ * cues override it per segment. `initial` seeds the mode for a block.
+ */
+function bucketText(text: string, buckets: Buckets, initial: SectionMode = 'other'): void {
+  let mode: SectionMode = initial;
+  for (const seg of segmentText(text)) {
     const isShort = seg.length <= 70 && wordCount(seg) <= 8;
     if (isShort) {
       if (NICE_HEADER.test(seg)) {
@@ -179,6 +178,50 @@ function bucketSegments(description: string, qualifications: string[]): Buckets 
     }
     buckets[segMode].push(seg);
   }
+}
+
+function sectionMode(section: JobSection): SectionMode | null {
+  switch (section.kind) {
+    case 'required':
+      return 'required';
+    case 'preferred':
+      return 'nice';
+    case 'unknown':
+      return null;
+    default:
+      return 'other';
+  }
+}
+
+/**
+ * Structured path: each section's kind seeds its bucket; unknown sections fall
+ * back to the free-text state machine for that block only.
+ */
+function bucketSections(sections: JobSection[], buckets: Buckets): void {
+  for (const section of sections) {
+    const mode = sectionMode(section);
+    if (mode === null) {
+      bucketText([section.heading, ...section.items].filter(Boolean).join('\n'), buckets, 'other');
+      continue;
+    }
+    if (section.heading) buckets[mode].push(section.heading);
+    if (mode === 'required') buckets.hasRequiredSection = true;
+    for (const item of section.items) {
+      let itemMode: SectionMode = mode;
+      if (NICE_INLINE.test(item)) itemMode = 'nice';
+      else if (mode === 'other' && REQUIRED_STRONG_INLINE.test(item)) {
+        itemMode = 'required';
+        buckets.hasRequiredSection = true;
+      }
+      buckets[itemMode].push(item);
+    }
+  }
+}
+
+function bucketSegments(description: string, qualifications: string[], sections?: JobSection[]): Buckets {
+  const buckets: Buckets = { required: [], nice: [], other: [], hasRequiredSection: false };
+  if (sections && sections.length > 0) bucketSections(sections, buckets);
+  else bucketText(description, buckets);
   for (const q of qualifications) {
     const seg = q.trim();
     if (!seg) continue;
@@ -405,12 +448,14 @@ function detectEmploymentType(job: JobPosting, text: string, roleLevel: RoleLeve
 // ---------------------------------------------------------------------------
 
 const YEARS_FALLBACK_RE = /(\d{1,2})\s*\+?\s*(?:(?:-|to|–)\s*\d{1,2})?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:professional|industry|relevant|hands-on|software|engineering|work|commercial|full[- ]time|in\b|building|developing|working|designing)/i;
+/** "3+ years of data engineering experience" — up to three qualifier words between "of" and "experience". */
+const YEARS_QUALIFIED_RE = /(\d{1,2})\s*\+?\s*(?:(?:-|to|–)\s*\d{1,2})?\s*(?:years?|yrs?)\s+of\s+(?:[\w/&-]+\s+){1,3}experience\b/i;
 
 function detectRequiredYears(text: string, qualifications: string[]): number | undefined {
   const joined = `${text} ${qualifications.join('. ')}`;
   let years = extractRequiredYearsFromJob(joined);
   if (years === undefined) {
-    const m = joined.match(YEARS_FALLBACK_RE);
+    const m = joined.match(YEARS_FALLBACK_RE) || joined.match(YEARS_QUALIFIED_RE);
     if (m) years = parseInt(m[1], 10);
   }
   if (years === undefined || isNaN(years)) return undefined;
@@ -426,7 +471,10 @@ export function extractJobRequirements(job: JobPosting): JobRequirements {
   const qualifications = job.qualifications || [];
   const fullText = [job.title || '', description, ...qualifications].join('\n');
 
-  const buckets = bucketSegments(description, qualifications);
+  const sections = job.sections && job.sections.length > 0 ? job.sections : undefined;
+  const buckets = bucketSegments(description, qualifications, sections);
+  const sectionSource: JobRequirements['sectionSource'] = sections ? 'sections' : 'text';
+  const unknownSectionCount = sections ? sections.filter((s) => s.kind === 'unknown').length : 0;
   const requiredText = buckets.required.join('\n');
   const niceText = buckets.nice.join('\n');
   const otherText = buckets.other.join('\n');
@@ -540,5 +588,7 @@ export function extractJobRequirements(job: JobPosting): JobRequirements {
     employmentType,
     themes,
     certificationsMentioned,
+    sectionSource,
+    unknownSectionCount,
   };
 }

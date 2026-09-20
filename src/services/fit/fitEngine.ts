@@ -249,6 +249,12 @@ export function calculateBestFit(job: JobPosting, profile: UserProfile, weights?
     hardBlockers,
     strengths,
     improvements,
+    requirementsSource: {
+      kind: reqs.sectionSource,
+      sectionCount: (job.sections || []).length,
+      unknownSectionCount: reqs.unknownSectionCount,
+      modelLabelledCount: (job.sections || []).filter((s) => s.kindSource === 'model').length,
+    },
     calculatedAt: now.toISOString(),
   };
 }

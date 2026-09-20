@@ -35,6 +35,14 @@ function confidenceLabel(confidence: FitResult['confidence']): string {
   return 'Low confidence';
 }
 
+function describeRequirementsSource(src: NonNullable<FitResult['requirementsSource']>): string {
+  if (src.kind === 'text') return 'Requirements read from the posting text (no section structure found).';
+  const parts = [`Requirements read from ${src.sectionCount} posting section${src.sectionCount === 1 ? '' : 's'}`];
+  if (src.modelLabelledCount > 0) parts.push(`${src.modelLabelledCount} labelled on-device`);
+  if (src.unknownSectionCount > 0) parts.push(`${src.unknownSectionCount} unlabelled`);
+  return parts.join(' · ') + '.';
+}
+
 /**
  * Best Fit % summary: headline score, confidence, hard blockers, strengths,
  * improvements, then a collapsible per-factor breakdown and skill chips.
@@ -193,6 +201,12 @@ export const BestFitCard: React.FC<BestFitCardProps> = ({ result }) => {
                   ))}
                 </div>
               </div>
+            )}
+
+            {result.requirementsSource && (
+              <p data-testid="best-fit-requirements-source" className="text-[10px] text-surface-400 leading-snug">
+                {describeRequirementsSource(result.requirementsSource)}
+              </p>
             )}
           </div>
         )}
