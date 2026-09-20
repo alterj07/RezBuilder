@@ -1,6 +1,7 @@
 import { JobScraper } from './scraperInterface';
 import { JobPosting } from '../../types/job';
 import { cleanText, extractSkillsFromText } from './keywordExtractor';
+import { extractStructuredDescription } from './structuredDescription';
 
 export class IndeedScraper implements JobScraper {
   name = 'Indeed';
@@ -54,7 +55,7 @@ export class IndeedScraper implements JobScraper {
         document.querySelector('.jobsearch-jobDescriptionText') ||
         document.querySelector('.jobsearch-JobComponent-description');
       
-      const description = cleanText(descEl?.textContent || (descEl as HTMLElement)?.innerText) || '';
+      const { text: description, sections } = extractStructuredDescription(descEl);
 
       if (!description || description.length < 50) {
         return null;
@@ -70,6 +71,7 @@ export class IndeedScraper implements JobScraper {
         location: locationRaw || undefined,
         remoteStatus,
         description,
+        sections,
         requiredSkills: skills,
         url,
         source: 'indeed',

@@ -4,6 +4,8 @@ export interface SchemaJobPosting {
   title?: string;
   hiringOrganization?: string;
   description?: string;
+  /** Raw `description` value (usually HTML) so scrapers can keep its heading/list structure. */
+  descriptionHtml?: string;
   datePosted?: string;
   validThrough?: string;
   employmentType?: string | string[];

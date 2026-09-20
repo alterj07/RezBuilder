@@ -1,6 +1,7 @@
 import { JobScraper } from './scraperInterface';
 import { JobPosting } from '../../types/job';
 import { cleanText, extractSkillsFromText } from './keywordExtractor';
+import { extractStructuredDescription } from './structuredDescription';
 
 export class WorkdayScraper implements JobScraper {
   name = 'Workday';
@@ -123,7 +124,7 @@ export class WorkdayScraper implements JobScraper {
         document.querySelector('[data-automation-id="jobPostingInformation"]') ||
         document.querySelector('#job-description');
 
-      const description = cleanText(descEl?.textContent || (descEl as HTMLElement)?.innerText) || '';
+      const { text: description, sections } = extractStructuredDescription(descEl);
 
       if (!description || description.length < 50) {
         return null;
@@ -157,6 +158,7 @@ export class WorkdayScraper implements JobScraper {
         location: locationRaw || undefined,
         remoteStatus,
         description,
+        sections,
         requiredSkills: skills,
         qualifications: qualifications.length > 0 ? qualifications : undefined,
         url,

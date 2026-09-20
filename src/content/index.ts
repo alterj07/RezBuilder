@@ -45,7 +45,12 @@ export function parseCurrentPage(): JobPosting | null {
   const classification = jobClassifier.classify(currentUrl, document);
   if (!classification.isJobPage) return null;
 
-  return scraperRegistry.detectAndScrape(currentUrl, document, classification.schemaJobPosting);
+  const job = scraperRegistry.detectAndScrape(currentUrl, document, classification.schemaJobPosting);
+  if (!job) return null;
+  // The classifier's verdict travels with the job so the background can decide
+  // whether a borderline page deserves a second look.
+  job.detection = { score: classification.score, confidence: classification.confidence };
+  return job;
 }
 
 /**

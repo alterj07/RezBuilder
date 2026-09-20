@@ -1,6 +1,7 @@
 import { JobScraper } from './scraperInterface';
 import { JobPosting } from '../../types/job';
 import { cleanText, extractSkillsFromText } from './keywordExtractor';
+import { extractStructuredDescription } from './structuredDescription';
 
 export class GreenhouseScraper implements JobScraper {
   name = 'Greenhouse';
@@ -60,7 +61,7 @@ export class GreenhouseScraper implements JobScraper {
         document.querySelector('.job-description') ||
         document.querySelector('#job-description');
 
-      const description = cleanText(descEl?.textContent || (descEl as HTMLElement)?.innerText) || '';
+      const { text: description, sections } = extractStructuredDescription(descEl);
 
       if (!description || description.length < 50) {
         return null;
@@ -76,6 +77,7 @@ export class GreenhouseScraper implements JobScraper {
         location: locationRaw || undefined,
         remoteStatus,
         description,
+        sections,
         requiredSkills: skills,
         url,
         source: 'greenhouse',

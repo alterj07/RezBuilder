@@ -1,6 +1,7 @@
 import { JobScraper } from './scraperInterface';
 import { JobPosting } from '../../types/job';
 import { cleanText, extractSkillsFromText } from './keywordExtractor';
+import { extractStructuredDescription, extractStructuredDescriptionFromHtml } from './structuredDescription';
 import { extractJobPostingSchema, jobClassifier } from '../detection/jobClassifier';
 import { SchemaJobPosting } from '../../types/detection';
 
@@ -80,7 +81,9 @@ export class GenericScraper implements JobScraper {
       const schemaData = schemaOverride || extractJobPostingSchema(document);
       if (schemaData && schemaData.title && schemaData.description && schemaData.description.length >= 50) {
         const title = schemaData.title;
-        const description = schemaData.description;
+        const structured = extractStructuredDescriptionFromHtml(schemaData.descriptionHtml || schemaData.description);
+        const description = structured.text || schemaData.description;
+        const sections = structured.sections;
         const company =
           schemaData.hiringOrganization ||
           document.title.split(/[-|–—]/)[0]?.trim() ||
@@ -113,6 +116,7 @@ export class GenericScraper implements JobScraper {
           location: location || undefined,
           remoteStatus,
           description,
+          sections,
           requiredSkills: skills,
           url,
           source: 'generic',
@@ -177,23 +181,24 @@ export class GenericScraper implements JobScraper {
       ];
 
       let description = '';
+      let sections: JobPosting['sections'] = undefined;
       for (const sel of descSelectors) {
         const el = document.querySelector(sel);
         if (el) {
-          const txt = cleanText((el as HTMLElement).innerText || el.textContent);
-          if (txt.length > 150) {
-            description = txt;
+          const structured = extractStructuredDescription(el);
+          if (structured.text.length > 150) {
+            description = structured.text;
+            sections = structured.sections;
             break;
           }
         }
       }
 
       if (!description || description.length < 100) {
-        // Fallback to body text with basic cleanup
-        description = cleanText(document.body?.innerText || document.body?.textContent || '');
-        if (description.length > 5000) {
-          description = description.substring(0, 5000);
-        }
+        // Fallback to the whole body (structured walker caps its own length)
+        const structured = extractStructuredDescription(document.body);
+        description = structured.text;
+        sections = structured.sections;
       }
 
       if (!description || description.length < 100) {
@@ -220,6 +225,7 @@ export class GenericScraper implements JobScraper {
         company,
         remoteStatus,
         description,
+        sections,
         requiredSkills: skills,
         url,
         source: 'generic',

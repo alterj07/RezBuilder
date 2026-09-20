@@ -226,6 +226,7 @@ function sanitizeSchemaPosting(node: any): SchemaJobPosting {
     title: typeof node.title === 'string' ? cleanText(node.title) : undefined,
     hiringOrganization: hiringOrg ? cleanText(hiringOrg) : undefined,
     description: description ? cleanText(description) : undefined,
+    descriptionHtml: typeof node.description === 'string' && node.description.trim() ? node.description : undefined,
     datePosted: typeof node.datePosted === 'string' ? node.datePosted : undefined,
     validThrough: typeof node.validThrough === 'string' ? node.validThrough : undefined,
     employmentType: node.employmentType,

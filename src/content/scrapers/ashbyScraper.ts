@@ -1,6 +1,7 @@
 import { JobScraper } from './scraperInterface';
 import { JobPosting } from '../../types/job';
 import { cleanText, extractSkillsFromText } from './keywordExtractor';
+import { extractStructuredDescription } from './structuredDescription';
 
 export class AshbyScraper implements JobScraper {
   name = 'Ashby';
@@ -131,7 +132,7 @@ export class AshbyScraper implements JobScraper {
         document.querySelector('.ashby-job-posting-description') ||
         document.querySelector('#job-description');
 
-      const description = cleanText(descEl?.textContent || (descEl as HTMLElement)?.innerText) || '';
+      const { text: description, sections } = extractStructuredDescription(descEl);
 
       if (!description || description.length < 50) {
         return null;
@@ -147,6 +148,7 @@ export class AshbyScraper implements JobScraper {
         location: locationRaw || undefined,
         remoteStatus,
         description,
+        sections,
         requiredSkills: skills,
         qualifications: qualifications.length > 0 ? qualifications : undefined,
         url,

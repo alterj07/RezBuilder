@@ -1,6 +1,7 @@
 import { JobScraper } from './scraperInterface';
 import { JobPosting } from '../../types/job';
 import { cleanText, extractSkillsFromText } from './keywordExtractor';
+import { extractStructuredDescription, extractStructuredDescriptionFromAll } from './structuredDescription';
 
 export class LeverScraper implements JobScraper {
   name = 'Lever';
@@ -56,15 +57,11 @@ export class LeverScraper implements JobScraper {
 
       // 4. Job Description
       const descContainers = document.querySelectorAll('.section-wrapper, .section.page-centered');
-      let description = '';
-      if (descContainers.length > 0) {
-        descContainers.forEach((container) => {
-          description += ' ' + cleanText((container as HTMLElement).innerText || container.textContent);
-        });
-      } else {
-        const mainEl = document.querySelector('.content') || document.querySelector('#content');
-        description = cleanText((mainEl as HTMLElement)?.innerText || mainEl?.textContent);
-      }
+      const structured =
+        descContainers.length > 0
+          ? extractStructuredDescriptionFromAll(Array.from(descContainers))
+          : extractStructuredDescription(document.querySelector('.content') || document.querySelector('#content'));
+      const { text: description, sections } = structured;
 
       if (!description || description.length < 50) {
         return null;
@@ -80,6 +77,7 @@ export class LeverScraper implements JobScraper {
         location: locationRaw || undefined,
         remoteStatus,
         description,
+        sections,
         requiredSkills: skills,
         url,
         source: 'lever',

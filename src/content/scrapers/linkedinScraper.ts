@@ -1,6 +1,7 @@
 import { JobScraper } from './scraperInterface';
 import { JobPosting } from '../../types/job';
 import { cleanText, extractSkillsFromText } from './keywordExtractor';
+import { extractStructuredDescription } from './structuredDescription';
 
 export class LinkedInScraper implements JobScraper {
   name = 'LinkedIn';
@@ -60,7 +61,7 @@ export class LinkedInScraper implements JobScraper {
         document.querySelector('.jobs-box__html-content') ||
         document.querySelector('.show-more-less-html__markup');
       
-      const description = cleanText(descEl?.textContent || (descEl as HTMLElement)?.innerText) || '';
+      const { text: description, sections } = extractStructuredDescription(descEl);
 
       if (!description || description.length < 50) {
         return null;
@@ -87,6 +88,7 @@ export class LinkedInScraper implements JobScraper {
         remoteStatus,
         seniority,
         description,
+        sections,
         requiredSkills: skills,
         url,
         source: 'linkedin',
