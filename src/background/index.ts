@@ -9,6 +9,7 @@ import {
 } from '../services/storage/tabJobStore';
 import { JobPosting } from '../types/job';
 import { handleLinkedInImportMessage, isLinkedInImportMessage } from './linkedinImport';
+import { handleLabellerMessage, isLabellerMessage, recordDetectionWithLabelling } from './sectionLabelling';
 
 /** Resolves the tab the user is currently looking at, if any. */
 async function getActiveTabId(): Promise<number | null> {
@@ -126,6 +127,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return handleLinkedInImportMessage(message, sendResponse);
   }
 
+  // Side panel managing the optional on-device labeller, and download
+  // progress relayed from the offscreen document.
+  // LABELLER_STATUS | LABELLER_DOWNLOAD | LABELLER_REMOVE | LABELLER_SET_ENABLED -> LabellerStatus
+  if (isLabellerMessage(message)) {
+    return handleLabellerMessage(message, sendResponse);
+  }
+
   // Content script reporting what it found on its page (automatic parsing).
   if (message.type === 'JOB_DETECTED' || message.type === 'NO_JOB_DETECTED') {
     const tabId = sender.tab?.id;
@@ -137,11 +145,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const job: JobPosting | null = message.type === 'JOB_DETECTED' ? message.payload || null : null;
 
     (async () => {
-      const activeTabId = await getActiveTabId();
-      await recordDetection(tabId, job, tabId === activeTabId);
-      if (job) await appendJobHistory(job);
-      sendResponse({ success: true });
-    })();
+      if (!job) {
+        await recordDetection(tabId, null, tabId === (await getActiveTabId()));
+        sendResponse({ success: true });
+        return;
+      }
+      const isActive = async () => tabId === (await getActiveTabId());
+      // Acknowledge as soon as the deterministic job (or its pending state) is
+      // stored; labelling may keep running after the content script moves on.
+      const stored = await recordDetectionWithLabelling(tabId, job, isActive);
+      if (stored) await appendJobHistory(stored);
+      try {
+        sendResponse({ success: true });
+      } catch {
+        // The tab may have navigated away while the model was busy.
+      }
+    })().catch((err) => console.error('[RezBuilder] JOB_DETECTED handling failed:', err));
     return true;
   }
 

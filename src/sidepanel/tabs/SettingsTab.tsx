@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, Eye, EyeSlash, FloppyDisk, Gear, Key, Lightning, Shield, Sliders, Sparkle, Trash, Warning } from '@phosphor-icons/react';
 import { UserSettings, DEFAULT_SETTINGS, AIProviderType } from '../../types/settings';
 import { settingsStorage } from '../../services/storage/settingsStorage';
 import { ATS_PRESETS } from '../../services/scoring/atsEngine';
+import { LocalLabellerCard } from '../../components/settings/LocalLabellerCard';
 
 interface SettingsTabProps {
   onDataCleared: () => void;
@@ -20,7 +21,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
   }, []);
 
   const handleSave = async () => {
-    await settingsStorage.saveSettings(settings);
+    // The labeller flags are owned by the background (download consent flips
+    // them); never let a stale draft overwrite what is in storage.
+    const stored = await settingsStorage.getSettings();
+    await settingsStorage.saveSettings({
+      ...settings,
+      enableLocalLabeller: stored.enableLocalLabeller,
+      labellerConsentAt: stored.labellerConsentAt,
+    });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
@@ -38,6 +46,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
   };
 
   const currentWeights = settings.customWeights || ATS_PRESETS[settings.atsPreset];
+
+  // The background owns this flag (download consent flips it); keep the draft in step.
+  const syncLabellerEnabled = useCallback((enabled: boolean) => {
+    setSettings((prev) => (prev.enableLocalLabeller === enabled ? prev : { ...prev, enableLocalLabeller: enabled }));
+  }, []);
 
   return (
     <div className="space-y-5 pb-8">
@@ -203,6 +216,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onDataCleared }) => {
           </div>
         )}
       </div>
+
+      {/* Optional on-device section labeller */}
+      <LocalLabellerCard onEnabledChange={syncLabellerEnabled} />
 
       {/* ATS Scoring Weights Customizer */}
       <div className="p-4 rounded-xl bg-surface-900 border border-surface-800 space-y-3">

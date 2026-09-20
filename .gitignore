@@ -26,3 +26,4 @@ CLAUDE.md
 .claude/
 *.md
 !README.md
+.cache/

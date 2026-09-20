@@ -424,6 +424,23 @@ describe('Milestone 3 — Adversarial Stress Testing & CSP Compliance Suite', ()
       }
     });
 
+    it('pins the manifest CSP to self + wasm-unsafe-eval only (needed by the on-device labeller)', () => {
+      const manifest = JSON.parse(fs.readFileSync(path.join(projectRoot, 'manifest.json'), 'utf-8'));
+      const csp: string = manifest.content_security_policy?.extension_pages;
+      expect(csp).toBeTruthy();
+      const scriptSrc = csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src'))!;
+      const sources = scriptSrc.replace('script-src', '').trim().split(/\s+/);
+      expect(sources.sort()).toEqual(["'self'", "'wasm-unsafe-eval'"].sort());
+      expect(csp).not.toMatch(/https?:|unsafe-inline|(?:^|\s)'unsafe-eval'/);
+      expect(manifest.permissions).toContain('offscreen');
+    });
+
+    it('verifies the offscreen document loads no remote scripts or styles', () => {
+      const html = fs.readFileSync(path.join(projectRoot, 'src/offscreen/index.html'), 'utf-8');
+      expect(html).not.toMatch(/<script[^>]+src=["']https?:\/\//i);
+      expect(html).not.toMatch(/<link[^>]+href=["']https?:\/\//i);
+    });
+
     it('verifies tailwind.config.js includes robust cross-platform system font fallbacks', () => {
       const tailwindConfigPath = path.join(projectRoot, 'tailwind.config.js');
       const content = fs.readFileSync(tailwindConfigPath, 'utf-8');

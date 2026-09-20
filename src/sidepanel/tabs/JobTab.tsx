@@ -53,15 +53,18 @@ export const JobTab: React.FC<JobTabProps> = ({
 
   // Best Fit % (profile vs. job). Deterministic and cheap, but memoised on the
   // job/profile identity so preset toggles and modal state don't re-run it.
+  const labellingPending = job?.labelling?.status === 'pending';
+  // Section kinds are part of the key so a job refined by the on-device labeller recomputes.
+  const sectionKey = (job?.sections || []).map((s) => s.kind).join(',');
   const fitResult: FitResult | null = useMemo(() => {
-    if (!job || !profile) return null;
+    if (!job || !profile || labellingPending) return null;
     try {
       return calculateBestFit(job, profile);
     } catch {
       // A malformed posting must never take the whole tab down.
       return null;
     }
-  }, [job?.id, job?.scrapedAt, job?.description, profile?.id, profile?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [job?.id, job?.scrapedAt, job?.description, job?.labelling?.status, sectionKey, profile?.id, profile?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,7 +206,24 @@ export const JobTab: React.FC<JobTabProps> = ({
       )}
 
       {/* Best Fit % (Candidate Profile vs. posting) */}
-      {job && profile && fitResult && <BestFitCard result={fitResult} />}
+      {job && profile && labellingPending && (
+        <div
+          data-testid="best-fit-labelling"
+          className="rounded-xl border border-surface-800 bg-surface-900/90 p-4 flex items-center gap-3 text-xs text-surface-300"
+        >
+          <ArrowsClockwise className="w-4 h-4 text-brand-400 animate-spin" />
+          <div>
+            <div className="font-medium text-surface-200">Labelling posting sections on-device…</div>
+            <div className="text-[10px] text-surface-500 mt-0.5">Best Fit appears once the classifier has placed the unlabelled sections.</div>
+          </div>
+        </div>
+      )}
+      {job && profile && !labellingPending && fitResult && <BestFitCard result={fitResult} />}
+      {job && profile && !labellingPending && (job.labelling?.status === 'timeout' || job.labelling?.status === 'failed') && (
+        <p data-testid="best-fit-labelling-fallback" className="text-[10px] text-surface-500 px-1">
+          On-device labelling {job.labelling.status === 'timeout' ? 'timed out' : 'failed'} — using text heuristics for this posting.
+        </p>
+      )}
 
       {/* ATS Scoring Section */}
       {job && (

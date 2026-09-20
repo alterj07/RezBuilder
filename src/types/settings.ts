@@ -18,6 +18,10 @@ export interface UserSettings {
   };
   enableFloatingButton: boolean;
   autoAnalyzeOnScrape: boolean;
+  /** Opt-in on-device zero-shot labelling of posting sections the heuristics cannot place. */
+  enableLocalLabeller?: boolean;
+  /** ISO timestamp of the user's consent to the one-time model download. */
+  labellerConsentAt?: string;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -38,4 +42,5 @@ export const DEFAULT_SETTINGS: UserSettings = {
   },
   enableFloatingButton: true,
   autoAnalyzeOnScrape: true,
+  enableLocalLabeller: false,
 };

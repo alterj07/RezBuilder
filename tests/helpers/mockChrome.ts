@@ -62,6 +62,7 @@ export function setupMockChrome(): SetupMockChromeResult {
   const tabRemovedListeners: ((tabId: number, info: any) => any)[] = [];
   const windowFocusListeners: ((windowId: number) => any)[] = [];
   const installedListeners: (() => void)[] = [];
+  let offscreenOpen = false;
 
   const messageListeners: ((
     message: any,
@@ -321,7 +322,25 @@ export function setupMockChrome(): SetupMockChromeResult {
         addListener: vi.fn((_fn) => {}),
       },
     },
+
+    // Offscreen document lifecycle: a flag stands in for the hidden page.
+    offscreen: {
+      createDocument: vi.fn(async (_opts: any) => {
+        if (offscreenOpen) throw new Error('Only a single offscreen document may be created.');
+        offscreenOpen = true;
+      }),
+      closeDocument: vi.fn(async () => {
+        offscreenOpen = false;
+      }),
+    },
   };
+
+  (mockChrome.runtime as any).getContexts = vi.fn(async (filter: any) => {
+    if (filter?.contextTypes?.includes('OFFSCREEN_DOCUMENT') && offscreenOpen) {
+      return [{ contextType: 'OFFSCREEN_DOCUMENT', documentUrl: 'chrome-extension://rezbuilder/src/offscreen/index.html' }];
+    }
+    return [];
+  });
 
   (globalThis as any).chrome = mockChrome;
 
@@ -341,6 +360,7 @@ export function setupMockChrome(): SetupMockChromeResult {
     updatedTabs.length = 0;
     nextCreatedTabId = 1000;
     activeTabId = 1;
+    offscreenOpen = false;
   };
 
   const setActiveTab = (tabId: number | null, url?: string) => {
