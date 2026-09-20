@@ -1,6 +1,6 @@
 # RezBuilder — Job-Application Copilot (Chrome Extension)
 
-**RezBuilder** is a free, local-first job-application copilot for Chrome (Manifest V3). It lives in the Side Panel while you browse: it recognises job postings on any website, tells you how well *you* fit each one, scores and tailors your resume for the ATS, and preps you for the interview. There are no accounts, no servers, and no paid AI — every engine is deterministic and runs in your browser.
+**RezBuilder** is a free, local-first job-application copilot for Chrome (Manifest V3). It lives in the Side Panel while you browse: it recognises job postings on any website, tells you how well *you* fit each one, scores and tailors your resume for the ATS, and preps you for the interview. There are no accounts, no servers, and no paid AI — every scoring engine is deterministic and runs in your browser. Optionally, you can enable a small on-device classifier (~87 MB, downloaded once from Hugging Face with your consent, run entirely locally) that helps read unusual posting layouts; it only labels sections, never scores you, and the extension works fully without it.
 
 > [!NOTE]
 > **100% Local & Free**: profile, resumes, jobs and settings live in `chrome.storage.local`. Nothing is sent anywhere. Optional bring-your-own-key LLM providers exist for resume tailoring but are never required.
