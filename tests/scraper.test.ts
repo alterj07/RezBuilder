@@ -211,16 +211,17 @@ describe('Platform Scrapers', () => {
 describe('ScraperRegistry Integration', () => {
   const parser = new DOMParser();
 
-  it('should register all 7 scrapers in correct priority order', () => {
+  it('should register all 8 scrapers in correct priority order', () => {
     const scrapers = scraperRegistry.getAllScrapers();
-    expect(scrapers.length).toBe(7);
+    expect(scrapers.length).toBe(8);
     expect(scrapers[0].name).toBe('LinkedIn');
     expect(scrapers[1].name).toBe('Indeed');
     expect(scrapers[2].name).toBe('Greenhouse');
     expect(scrapers[3].name).toBe('Lever');
     expect(scrapers[4].name).toBe('Workday');
     expect(scrapers[5].name).toBe('Ashby');
-    expect(scrapers[6].name).toBe('Generic Job Scraper');
+    expect(scrapers[6].name).toBe('Taleo');
+    expect(scrapers[7].name).toBe('Generic Job Scraper');
   });
 
   it('should detect and scrape Workday postings via registry', () => {

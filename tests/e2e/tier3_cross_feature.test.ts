@@ -15,6 +15,7 @@ import {
   GREENHOUSE_DOM_FIXTURE,
   LEVER_DOM_FIXTURE,
   WORKDAY_DOM_FIXTURE,
+  TALEO_DOM_FIXTURE,
   ALGOMASTER_NEGATIVE_DOM_FIXTURE,
 } from '../fixtures/domFixtures';
 import {
@@ -23,7 +24,7 @@ import {
   MOCK_PRODUCT_MANAGER_RESUME,
 } from '../fixtures/mockResumes';
 
-describe('Tier 3: Cross-Feature Integration Pipelines (8 Tests)', () => {
+describe('Tier 3: Cross-Feature Integration Pipelines (9 Tests)', () => {
   beforeEach(() => {
     setupMockChrome();
   });
@@ -93,7 +94,27 @@ describe('Tier 3: Cross-Feature Integration Pipelines (8 Tests)', () => {
     ).toBe(true);
   });
 
-  it('T3-INT-04: Tailored Resume -> Lever Form Auto-Fill Pipeline', () => {
+  it('T3-INT-04: Detection -> Scraping Pipeline for Taleo Job Board', () => {
+    const doc = createDomDocument(TALEO_DOM_FIXTURE);
+    const url = 'https://hdr.taleo.net/careersection/ex/jobdetail.ftl?job=195805&lang=en&src=SNS-10025';
+
+    // Step 1: Page Classification
+    const classification = jobClassifier.classify(url, doc);
+    expect(classification.isJobPage).toBe(true);
+    expect(classification.confidence).toBe('high');
+
+    // Step 2: Automated Scraper Dispatching
+    const job = scraperRegistry.detectAndScrape(url, doc);
+    expect(job).not.toBeNull();
+    expect(job?.title).toBe('Senior Software Engineer');
+    expect(job?.company).toBe('HDR');
+    expect(job?.source).toBe('taleo');
+    expect(job?.requiredSkills.length).toBeGreaterThanOrEqual(3);
+    expect(job?.sections).toBeDefined();
+    expect(job?.sections?.length).toBeGreaterThan(0);
+  });
+
+  it('T3-INT-05: Tailored Resume -> Lever Form Auto-Fill Pipeline', () => {
     const doc = createDomDocument(LEVER_DOM_FIXTURE);
     const url = 'https://jobs.lever.co/examplecorp/12345-abcde';
     const job = scraperRegistry.detectAndScrape(url, doc)!;
@@ -122,7 +143,7 @@ describe('Tier 3: Cross-Feature Integration Pipelines (8 Tests)', () => {
     expect(orgInput.value).toBe('SaaS Metrics Co');
   });
 
-  it('T3-INT-05: Complete 5-Stage End-to-End Pipeline (Detection -> Scrape -> ATS -> Tailor -> Autofill)', () => {
+  it('T3-INT-06: Complete 5-Stage End-to-End Pipeline (Detection -> Scrape -> ATS -> Tailor -> Autofill)', () => {
     const doc = createDomDocument(GREENHOUSE_DOM_FIXTURE);
     const url = 'https://boards.greenhouse.io/stripe/jobs/987654';
 
@@ -153,7 +174,7 @@ describe('Tier 3: Cross-Feature Integration Pipelines (8 Tests)', () => {
     expect(lastInput.value).toBe('Rivera');
   });
 
-  it('T3-INT-06: Negative Veto Pipeline Suppression for Algomaster Course Page', () => {
+  it('T3-INT-07: Negative Veto Pipeline Suppression for Algomaster Course Page', () => {
     const doc = createDomDocument(ALGOMASTER_NEGATIVE_DOM_FIXTURE);
     const url = 'https://algomaster.io/learn/system-design/course-introduction';
 
@@ -175,7 +196,7 @@ describe('Tier 3: Cross-Feature Integration Pipelines (8 Tests)', () => {
     expect(autofillTriggered).toBe(false);
   });
 
-  it('T3-INT-07: Storage and Extension Runtime State Synchronization Flow', async () => {
+  it('T3-INT-08: Storage and Extension Runtime State Synchronization Flow', async () => {
     const { store } = setupMockChrome();
 
     let storageChangedCalled = false;
@@ -196,7 +217,7 @@ describe('Tier 3: Cross-Feature Integration Pipelines (8 Tests)', () => {
     expect(storageChangedCalled).toBe(true);
   });
 
-  it('T3-INT-08: Multi-Format Exporter Integration with Tailored Resume', async () => {
+  it('T3-INT-09: Multi-Format Exporter Integration with Tailored Resume', async () => {
     const doc = createDomDocument(GREENHOUSE_DOM_FIXTURE);
     const job = scraperRegistry.detectAndScrape('https://boards.greenhouse.io/stripe/jobs/987654', doc)!;
 

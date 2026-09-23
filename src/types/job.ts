@@ -57,7 +57,7 @@ export interface JobPosting {
   requiredSkills: string[];
   qualifications?: string[];
   url: string;
-  source: 'linkedin' | 'indeed' | 'greenhouse' | 'lever' | 'workday' | 'ashby' | 'generic' | 'manual';
+  source: 'linkedin' | 'indeed' | 'greenhouse' | 'lever' | 'workday' | 'ashby' | 'taleo' | 'generic' | 'manual';
   scrapedAt: string; // ISO string
   rawHtml?: string;
   /** Structured blocks of the description (heading + items). Absent on manual / legacy jobs. */

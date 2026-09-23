@@ -5,6 +5,7 @@ import { GreenhouseScraper } from './greenhouseScraper';
 import { LeverScraper } from './leverScraper';
 import { WorkdayScraper } from './workdayScraper';
 import { AshbyScraper } from './ashbyScraper';
+import { TaleoScraper } from './taleoScraper';
 import { GenericScraper } from './genericScraper';
 import { JobPosting } from '../../types/job';
 import { ClassificationResult, SchemaJobPosting } from '../../types/detection';
@@ -18,6 +19,7 @@ export class ScraperRegistry {
     new LeverScraper(),
     new WorkdayScraper(),
     new AshbyScraper(),
+    new TaleoScraper(),
     new GenericScraper(),
   ];
 
